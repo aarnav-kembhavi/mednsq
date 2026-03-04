@@ -17,7 +17,7 @@ import json
 
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 20
+RANDOM_BASELINE_COLS = 100
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 8
 
@@ -105,6 +105,7 @@ def _evaluate_column_ems(
     baseline_margins: torch.Tensor,
     letter_token_ids: torch.Tensor,
     early_stop_mu: float | None = None,
+    early_stop_sigma: float | None = None,
     max_samples: int | None = None,
     track_flips: bool = False,
 ) -> Tuple[torch.Tensor, float, float, float]:
@@ -163,7 +164,10 @@ def _evaluate_column_ems(
                     mean_drop_so_far = float(
                         (base_so_far - crushed_so_far).mean().item()
                     )
-                    if mean_drop_so_far < early_stop_mu:
+                    threshold = early_stop_mu
+                    if early_stop_sigma is not None:
+                        threshold = early_stop_mu + 0.5 * early_stop_sigma
+                    if mean_drop_so_far < threshold:
                         stop_early = True
                         break
 
@@ -313,14 +317,15 @@ def _run_ems_for_layer(
             baseline_stage1,
             letter_token_ids,
             early_stop_mu=mu_rand,
+            early_stop_sigma=sigma_rand,
             max_samples=stage1_samples,
             track_flips=False,
         )
         if mean_drop > 0.0:
             stage1_candidates.append((int(col), mean_drop))
 
-    # Keep top-k Stage 2 candidates by absolute drop magnitude.
-    stage1_candidates.sort(key=lambda x: abs(x[1]), reverse=True)
+    # Keep top-k Stage 2 candidates by mean drop (positive = safety-relevant).
+    stage1_candidates.sort(key=lambda x: x[1], reverse=True)
     stage2_columns = [c for c, _ in stage1_candidates[: cfg.stage2_top_k]]
 
     print(
@@ -350,11 +355,13 @@ def _run_ems_for_layer(
         )
 
         z = (mean_drop - mu_rand) / (sigma_rand + 1e-8)
+        median_drop = float(torch.median(drops).item())
 
         result = {
             "layer": layer_idx,
             "column": int(col),
             "mean_drop": mean_drop,
+            "median_drop": median_drop,
             "z_score": z,
             "flip_rate": flip_rate,
             "lethal_flip_rate": lethal_flip_rate,
@@ -364,7 +371,7 @@ def _run_ems_for_layer(
         print(
             "[Stage2] "
             f"layer={layer_idx} column={col} "
-            f"drop={mean_drop:.6f} Z={z:.3f} "
+            f"drop={mean_drop:.6f} median_drop={median_drop:.6f} Z={z:.3f} "
             f"flip={flip_rate:.4f} lethal={lethal_flip_rate:.4f}"
         )
 
@@ -432,6 +439,99 @@ def _run_ems_for_layer(
         "max_z": max_z,
         "baseline_eval": baseline_eval,
     }
+
+
+def run_multi_anchor_ablation_sweep(
+    model_name: str,
+    tokenizer,
+    anchors: List[Tuple[int, int]],
+    seeds: List[int],
+    calibration_size: int,
+    eval_size: int,
+) -> None:
+    """Run multi-anchor ablations across multiple dataset seeds and average results."""
+
+    print("\n=== Multi Anchor Ablation Sweep ===")
+
+    ablation_counts = [1, 3, 5]
+    # Store per-ablation metrics across seeds.
+    sweep_results: Dict[int, Dict[str, List[float]]] = {
+        k: {"accuracies": [], "margins": []} for k in ablation_counts
+    }
+
+    for seed in seeds:
+        torch.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+
+        total_needed = calibration_size + eval_size
+        samples = load_mcq_dataset(n_total=total_needed)
+        random.shuffle(samples)
+
+        calibration = samples[:calibration_size]
+        evaluation = samples[calibration_size : calibration_size + eval_size]
+
+        adv_pairs = build_adversarial_pairs(
+            model, tokenizer, calibration, n_calib=len(calibration)
+        )
+
+        probe = MedNSQProbe(model)
+
+        for count in ablation_counts:
+            if count > len(anchors):
+                continue
+
+            subset = anchors[:count]
+            saved_columns: List[Tuple[int, int, torch.Tensor]] = []
+
+            try:
+                # Crush each selected anchor.
+                for layer_idx, col_idx in subset:
+                    original_col = probe.simulate_column_crush(layer_idx, col_idx)
+                    saved_columns.append((layer_idx, col_idx, original_col))
+
+                # Evaluate accuracy under the joint crush.
+                eval_metrics = evaluate_model(model, tokenizer, evaluation)
+                accuracy = float(eval_metrics.get("accuracy", 0.0))
+
+                # Compute mean margin on calibration adversarial pairs.
+                margins = probe.compute_per_sample_margins(adv_pairs)
+                mean_margin = (
+                    float(margins.mean().item()) if margins.numel() > 0 else 0.0
+                )
+
+                sweep_results[count]["accuracies"].append(accuracy)
+                sweep_results[count]["margins"].append(mean_margin)
+
+            finally:
+                # Restore all crushed columns to their original values.
+                for layer_idx, col_idx, original_col in saved_columns:
+                    probe.restore_column(layer_idx, col_idx, original_col)
+
+        del probe
+        del model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    # Aggregate and print averaged results across seeds.
+    for count in ablation_counts:
+        accs = sweep_results[count]["accuracies"]
+        margins = sweep_results[count]["margins"]
+        if not accs:
+            continue
+
+        mean_acc = sum(accs) / len(accs)
+        mean_margin = sum(margins) / len(margins) if margins else 0.0
+
+        print(f"\nAnchors removed: {count}")
+        print(f"Mean accuracy: {mean_acc}")
+        print(f"Mean margin: {mean_margin}")
 
 
 def main():
@@ -530,6 +630,37 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     with open(f"ems_seed_sweep_{timestamp}.json", "w") as f:
         json.dump(all_seed_results, f, indent=2)
+
+    # Anchor frequency: (layer, column) -> count across seeds.
+    anchor_freq: Dict[Tuple[int, int], int] = {}
+    num_seeds = len(all_seed_results)
+    for seed_result in all_seed_results:
+        for layer_summary in seed_result["layers"]:
+            for anchor in layer_summary["validated_anchors"]:
+                key = (anchor["layer"], anchor["column"])
+                anchor_freq[key] = anchor_freq.get(key, 0) + 1
+    print("\n=== Anchor Frequency ===")
+    for (layer, column), count in sorted(
+        anchor_freq.items(), key=lambda x: (-x[1], x[0][0], x[0][1])
+    ):
+        print(f"(layer={layer}, column={column}) appeared in {count}/{num_seeds} seeds")
+
+    # Multi-anchor ablation sweep on a fixed set of discovered anchors.
+    anchors = [
+        (16, 1761),
+        (16, 2056),
+        (16, 3433),
+        (8, 3977),
+        (8, 3347),
+    ]
+    run_multi_anchor_ablation_sweep(
+        model_name=model_name,
+        tokenizer=tokenizer,
+        anchors=anchors,
+        seeds=[1, 2, 3, 4, 5],
+        calibration_size=cfg.calibration_size,
+        eval_size=40,
+    )
 
 
 if __name__ == "__main__":
