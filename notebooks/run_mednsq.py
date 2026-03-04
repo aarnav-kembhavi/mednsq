@@ -435,16 +435,20 @@ def _run_ems_for_layer(
 
 
 def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Reproducibility: set experiment seeds.
-    seed = 42
-    torch.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
+    # Use device map auto-loading; seeds are handled per-run below.
+    _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model_name = "google/medgemma-1.5-4b-it"
+    layers_to_test = [2, 8, 16, 24]
 
+    # Default experiment configuration (can be adjusted as needed).
+    cfg = EMSConfig()
+
+    # Sweep over multiple random seeds to test anchor stability.
+    seeds = [1, 2, 3, 4, 5]
+    all_seed_results: List[Dict[str, Any]] = []
+
+    # Load tokenizer and model once; weights do not change across seeds.
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
@@ -452,69 +456,80 @@ def main():
         device_map="auto",
     )
 
-    # Default experiment configuration (can be adjusted as needed).
-    cfg = EMSConfig()
+    for seed in seeds:
+        print(f"\n===== RUNNING SEED {seed} =====")
+        print(f"Calibration size: {cfg.calibration_size}")
 
-    # Experiment layers.
-    layers_to_test = [2, 8, 16, 24]
+        # Reproducibility: set experiment seeds for this run.
+        torch.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
 
-    # Dataset split: configurable calibration size, fixed held-out evaluation size.
-    eval_size = 40
-    total_needed = cfg.calibration_size + eval_size
-    samples = load_mcq_dataset(n_total=total_needed)
-    calibration = samples[: cfg.calibration_size]
-    evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
+        # Dataset split: configurable calibration size, fixed held-out evaluation size.
+        eval_size = 40
+        total_needed = cfg.calibration_size + eval_size
+        samples = load_mcq_dataset(n_total=total_needed)
+        random.shuffle(samples)
+        calibration = samples[: cfg.calibration_size]
+        evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
 
-    adv_pairs = build_adversarial_pairs(
-        model, tokenizer, calibration, n_calib=len(calibration)
-    )
-
-    probe = MedNSQProbe(model)
-
-    all_layer_summaries: List[Dict[str, Any]] = []
-    for layer_idx in layers_to_test:
-        summary = _run_ems_for_layer(
-            model,
-            tokenizer,
-            probe,
-            adv_pairs,
-            evaluation,
-            layer_idx,
-            cfg,
-        )
-        all_layer_summaries.append(summary)
-
-    print("\n=== Final EMS Summary Across Layers ===")
-    for summary in all_layer_summaries:
-        print(
-            f"[Layer Summary] layer={summary['layer']} "
-            f"validated_anchors={len(summary['validated_anchors'])} "
-            f"max_drop={summary['max_drop']:.6f} "
-            f"mean_drop={summary['mean_drop']:.6f} "
-            f"max_Z={summary['max_z']:.3f}"
+        adv_pairs = build_adversarial_pairs(
+            model, tokenizer, calibration, n_calib=len(calibration)
         )
 
-    # Per-anchor logging in the requested format.
-    for summary in all_layer_summaries:
-        for anchor in summary["validated_anchors"]:
-            print(
-                "[Safety Anchor] "
-                f"layer={anchor['layer']} "
-                f"column={anchor['column']} "
-                f"drop={anchor['mean_drop']:.6f} "
-                f"Z={anchor['z_score']:.3f} "
-                f"flip={anchor['flip_rate']:.4f} "
-                f"lethal={anchor['lethal_flip_rate']:.4f}"
+        probe = MedNSQProbe(model)
+
+        all_layer_summaries: List[Dict[str, Any]] = []
+        for layer_idx in layers_to_test:
+            summary = _run_ems_for_layer(
+                model,
+                tokenizer,
+                probe,
+                adv_pairs,
+                evaluation,
+                layer_idx,
+                cfg,
             )
+            all_layer_summaries.append(summary)
+
+        # Compact per-seed summary.
+        print("\n=== Seed Summary ===")
+        print(f"seed={seed}")
+        for layer_idx in layers_to_test:
+            layer_summary = next(
+                s for s in all_layer_summaries if s["layer"] == layer_idx
+            )
+            num_anchors = len(layer_summary["validated_anchors"])
+            print(f"layer{layer_idx} anchors={num_anchors}")
+
+        # Store per-seed results.
+        seed_summary = {
+            "seed": seed,
+            "layers": all_layer_summaries,
+        }
+        all_seed_results.append(seed_summary)
+
+        # Clear per-seed probe and GPU cache before next seed.
+        del probe
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    # Final EMS summary across all seeds is stored in all_seed_results.
+    print("\n=== Anchor Stability Summary ===")
+    for layer_idx in layers_to_test:
+        counts: List[int] = []
+        for seed_result in all_seed_results:
+            layer_summary = next(
+                s for s in seed_result["layers"] if s["layer"] == layer_idx
+            )
+            counts.append(len(layer_summary["validated_anchors"]))
+        mean_anchors = sum(counts) / len(counts) if counts else 0.0
+        print(f"layer{layer_idx} mean anchors = {mean_anchors:.3f}")
 
     # Save experiment output to JSON for reproducibility.
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output = {
-        "seed": seed,
-        "layers": all_layer_summaries,
-    }
-    with open(f"ems_results_{timestamp}.json", "w") as f:
-        json.dump(output, f, indent=2)
+    with open(f"ems_seed_sweep_{timestamp}.json", "w") as f:
+        json.dump(all_seed_results, f, indent=2)
 
 
 if __name__ == "__main__":
