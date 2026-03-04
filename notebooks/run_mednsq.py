@@ -1,4 +1,6 @@
 import math
+from collections import Counter
+from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 
 import torch
@@ -10,12 +12,23 @@ from mednsq_eval import evaluate_model, _get_letter_token_ids
 from mednsq_probe import MedNSQProbe
 
 
-# EMS configuration constants
-STAGE1_SAMPLES = 30
-STAGE2_TOP_K = 20
+# EMS configuration constants (defaults for next runs)
 RANDOM_BASELINE_COLS = 20
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 8
+
+
+@dataclass
+class EMSConfig:
+    """Configuration for EMS experiments."""
+
+    # Per the user-specified default experiment
+    layer_idx: int = 2
+    calibration_size: int = 100
+    stage1_top_k: int = 200
+    stage1_samples: int = 30
+    stage2_top_k: int = 20
+    stage2_samples: int = 100
 
 
 def _batched_margins_and_predictions(
@@ -33,7 +46,6 @@ def _batched_margins_and_predictions(
         return torch.zeros(0, dtype=torch.float32), []
 
     device = next(model.parameters()).device
-    letter_token_ids = letter_token_ids.to(device)
 
     margins: List[float] = []
     preds: List[int] = []
@@ -107,11 +119,13 @@ def _evaluate_column_ems(
         adv_pairs = adv_pairs[:max_samples]
         baseline_margins = baseline_margins[:max_samples]
 
+    # Crush a single column and keep a copy of its original weights.
     original_col = probe.simulate_column_crush(layer_idx, col_idx)
 
     crushed_margins: List[float] = []
     preds: List[int] = []
     processed = 0
+    stop_early = False
 
     try:
         device = next(model.parameters()).device
@@ -146,21 +160,24 @@ def _evaluate_column_ems(
                         (base_so_far - crushed_so_far).mean().item()
                     )
                     if mean_drop_so_far < early_stop_mu:
-                        # Stop evaluating this column early.
+                        stop_early = True
                         break
 
-            if early_stop_mu is not None and processed % 10 == 0:
-                # We broke out of the inner loop; exit the outer batch loop too.
-                base_so_far = baseline_margins[:processed]
-                crushed_so_far = torch.tensor(
-                    crushed_margins[:processed], dtype=torch.float32
-                )
-                mean_drop_so_far = float((base_so_far - crushed_so_far).mean().item())
-                if mean_drop_so_far < early_stop_mu:
-                    break
+            if stop_early:
+                break
 
     finally:
+        # Restore the crushed column and sanity-check restoration.
         probe.restore_column(layer_idx, col_idx, original_col)
+        restored_col = probe.get_layer_weight(layer_idx)[:, col_idx].detach().to(
+            original_col.dtype
+        )
+        max_diff = (restored_col - original_col).abs().max().item()
+        if max_diff > 1e-3:
+            print(
+                f"[Warning] Column restoration check failed for "
+                f"layer={layer_idx}, column={col_idx}, max_diff={max_diff:.6e}"
+            )
 
     if not crushed_margins:
         return torch.zeros(0, dtype=torch.float32), 0.0, 0.0, 0.0
@@ -173,57 +190,73 @@ def _evaluate_column_ems(
     lethal_flip_rate = 0.0
 
     if track_flips and preds:
+        # Flip tracking is computed per column with fresh counters.
         total = len(preds)
         flips = 0
         lethal_flips = 0
+
+        # We compare predictions against the positive / negative tokens.
+        # This matches the desired per-sample EMS flip semantics.
+        letter_token_ids_cpu = letter_token_ids.detach().cpu()
+
+        debug_limit = 5  # Print the first few samples for sanity.
+        printed_debug = 0
+
         for i, pred_idx in enumerate(preds):
-            correct_idx = adv_pairs[i]["correct_letter_index"]
-            neg_idx = adv_pairs[i]["neg_letter_index"]
-            if pred_idx != correct_idx:
+            pair = adv_pairs[i]
+            correct_token = int(pair["pos_id"])
+            neg_token = int(pair["neg_id"])
+            pred_token = int(letter_token_ids_cpu[pred_idx].item())
+
+            if pred_token != correct_token:
                 flips += 1
-                if pred_idx == neg_idx:
+                if pred_token == neg_token:
                     lethal_flips += 1
+
+            # Optional lightweight debug trace for the first few samples.
+            if printed_debug < debug_limit:
+                print(
+                    f"[FlipDebug] layer={layer_idx} column={col_idx} "
+                    f"sample={i} pred_token={pred_token} "
+                    f"correct_token={correct_token} neg_token={neg_token}"
+                )
+                printed_debug += 1
+
         flip_rate = flips / total if total > 0 else 0.0
         lethal_flip_rate = lethal_flips / total if total > 0 else 0.0
 
     return drops, mean_drop, flip_rate, lethal_flip_rate
 
 
-def main():
+def _run_ems_for_layer(
+    model,
+    tokenizer,
+    probe: MedNSQProbe,
+    adv_pairs: List[Dict[str, Any]],
+    evaluation_samples: List[Dict[str, Any]],
+    layer_idx: int,
+    cfg: EMSConfig,
+) -> Dict[str, Any]:
+    """Run the full EMS pipeline (Taylor → Stage1 → Stage2 → Z) for one layer."""
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model_name = "google/medgemma-1.5-4b-it"
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.bfloat16,
-    ).to(device)
-
-    samples = load_mcq_dataset(n_total=80)
-    calibration = samples[:40]
-    evaluation = samples[40:80]
-
-    adv_pairs = build_adversarial_pairs(
-        model, tokenizer, calibration, n_calib=len(calibration)
-    )
-
-    probe = MedNSQProbe(model)
-
-    layer_idx = 2
-
-    print("Processing layer", layer_idx)
+    print(f"\n=== Processing layer {layer_idx} ===")
 
     # Stage 0: directional Taylor scores for all columns.
     jacobian_scores = probe.compute_contrastive_jacobian(layer_idx, adv_pairs)
     num_cols = jacobian_scores.numel()
-    top_k = min(200, num_cols)
-    top_vals, top_indices = torch.topk(jacobian_scores, k=top_k)
+    print(f"[ProbeCheck] layer={layer_idx} num_cols={num_cols}")
+
+    stage1_top_k = min(cfg.stage1_top_k, num_cols)
+    top_vals, top_indices = torch.topk(jacobian_scores, k=stage1_top_k)
+    print("Top Taylor score:", top_vals[0].item())
 
     # Baseline per-sample margins cached once.
     baseline_margins_all = probe.compute_per_sample_margins(adv_pairs)
-    baseline_stage1 = baseline_margins_all[:STAGE1_SAMPLES]
+
+    stage1_samples = min(cfg.stage1_samples, len(adv_pairs))
+    stage2_samples = min(cfg.stage2_samples, len(adv_pairs))
+
+    baseline_stage1 = baseline_margins_all[:stage1_samples]
 
     # Letter token ids for A/B/C/D predictions.
     letter_token_ids = _get_letter_token_ids(tokenizer)
@@ -239,11 +272,11 @@ def main():
             probe,
             layer_idx,
             int(col),
-            adv_pairs[:STAGE1_SAMPLES],
+            adv_pairs[:stage1_samples],
             baseline_stage1,
             letter_token_ids,
             early_stop_mu=None,
-            max_samples=STAGE1_SAMPLES,
+            max_samples=stage1_samples,
             track_flips=False,
         )
         random_mean_drops.append(mean_drop)
@@ -258,6 +291,11 @@ def main():
 
     print(f"Random baseline mu_rand: {mu_rand:.6f}")
     print(f"Random baseline sigma_rand: {sigma_rand:.6f}")
+    if sigma_rand > 0.05:
+        print(
+            f"[Warning] sigma_rand={sigma_rand:.6f} is unusually large; "
+            f"Z-scores may be unstable."
+        )
 
     # Stage 1 EMS on top-k columns with early stopping.
     stage1_candidates: List[Tuple[int, float]] = []
@@ -267,77 +305,205 @@ def main():
             probe,
             layer_idx,
             int(col),
-            adv_pairs[:STAGE1_SAMPLES],
+            adv_pairs[:stage1_samples],
             baseline_stage1,
             letter_token_ids,
             early_stop_mu=mu_rand,
-            max_samples=STAGE1_SAMPLES,
+            max_samples=stage1_samples,
             track_flips=False,
         )
         if mean_drop > 0.0:
             stage1_candidates.append((int(col), mean_drop))
 
-    # Keep top 20 by absolute drop magnitude.
+    # Keep top-k Stage 2 candidates by absolute drop magnitude.
     stage1_candidates.sort(key=lambda x: abs(x[1]), reverse=True)
-    stage2_columns = [c for c, _ in stage1_candidates[:STAGE2_TOP_K]]
+    stage2_columns = [c for c, _ in stage1_candidates[: cfg.stage2_top_k]]
 
-    print(f"Stage 1 retained {len(stage2_columns)} columns for Stage 2 EMS.")
+    print(
+        f"Stage 1 retained {len(stage2_columns)} columns for Stage 2 EMS "
+        f"(top_k={cfg.stage2_top_k})."
+    )
 
-    # Stage 2 EMS on full calibration set, with lethal flip tracking.
-    validated_anchors = []
+    # Stage 2 EMS on (possibly truncated) calibration set, with lethal flip tracking.
+    validated_anchors: List[Dict[str, Any]] = []
+    stage2_results: List[Dict[str, Any]] = []
+
+    adv_pairs_stage2 = adv_pairs[:stage2_samples]
+    baseline_stage2 = baseline_margins_all[:stage2_samples]
+
     for col in stage2_columns:
         drops, mean_drop, flip_rate, lethal_flip_rate = _evaluate_column_ems(
             model,
             probe,
             layer_idx,
             int(col),
-            adv_pairs,
-            baseline_margins_all,
+            adv_pairs_stage2,
+            baseline_stage2,
             letter_token_ids,
             early_stop_mu=None,
-            max_samples=None,
+            max_samples=stage2_samples,
             track_flips=True,
         )
 
         z = (mean_drop - mu_rand) / (sigma_rand + 1e-8)
+
+        result = {
+            "layer": layer_idx,
+            "column": int(col),
+            "mean_drop": mean_drop,
+            "z_score": z,
+            "flip_rate": flip_rate,
+            "lethal_flip_rate": lethal_flip_rate,
+        }
+        stage2_results.append(result)
+
         print(
-            f"Column {col}: mean_drop={mean_drop:.6f}, Z={z:.3f}, "
-            f"flip_rate={flip_rate:.4f}, lethal_flip_rate={lethal_flip_rate:.4f}"
+            "[Stage2] "
+            f"layer={layer_idx} column={col} "
+            f"drop={mean_drop:.6f} Z={z:.3f} "
+            f"flip={flip_rate:.4f} lethal={lethal_flip_rate:.4f}"
         )
 
         if z > Z_THRESHOLD:
-            validated_anchors.append(
-                {
-                    "layer": layer_idx,
-                    "column": int(col),
-                    "mean_drop": mean_drop,
-                    "z_score": z,
-                    "flip_rate": flip_rate,
-                    "lethal_flip_rate": lethal_flip_rate,
-                }
+            validated_anchors.append(result)
+
+    # Sanity checks over Stage 2 flip statistics.
+    if stage2_results:
+        # Identical flip_rate across many columns.
+        flip_values = [round(r["flip_rate"], 6) for r in stage2_results]
+        counts = Counter(flip_values)
+        for val, count in counts.items():
+            if count > 5:
+                print(
+                    f"[Warning] flip_rate={val:.4f} is identical across "
+                    f"{count} columns in layer {layer_idx}; "
+                    f"check flip tracking."
+                )
+                break
+
+        # Lethal flip rate equal to flip rate for most columns.
+        same_count = sum(
+            abs(r["flip_rate"] - r["lethal_flip_rate"]) < 1e-6
+            for r in stage2_results
+        )
+        if same_count > 0.8 * len(stage2_results):
+            print(
+                f"[Warning] lethal_flip_rate equals flip_rate for "
+                f"{same_count}/{len(stage2_results)} columns in layer {layer_idx}."
             )
 
-    print("\n=== Final EMS Summary ===")
-    print(f"Random baseline mu_rand: {mu_rand:.6f}")
-    print(f"Random baseline sigma_rand: {sigma_rand:.6f}")
-    print(f"Validated Safety Anchors (Z > {Z_THRESHOLD}): {len(validated_anchors)}")
-
-    for anchor in validated_anchors:
-        print(
-            f"[Safety Anchor] layer={anchor['layer']} "
-            f"column={anchor['column']} "
-            f"mean_drop={anchor['mean_drop']:.6f} "
-            f"Z={anchor['z_score']:.3f} "
-            f"flip_rate={anchor['flip_rate']:.4f} "
-            f"lethal_flip_rate={anchor['lethal_flip_rate']:.4f}"
+    # Per-layer summary for validated anchors.
+    if validated_anchors:
+        max_drop = max(a["mean_drop"] for a in validated_anchors)
+        mean_drop_validated = float(
+            sum(a["mean_drop"] for a in validated_anchors) / len(validated_anchors)
         )
+        max_z = max(a["z_score"] for a in validated_anchors)
+    else:
+        max_drop = 0.0
+        mean_drop_validated = 0.0
+        max_z = 0.0
 
-    # Baseline evaluation on held-out samples.
-    baseline_eval = evaluate_model(model, tokenizer, evaluation)
+    print("\n=== Layer Summary ===")
+    print(f"layer={layer_idx}")
+    print(f"validated_anchors={len(validated_anchors)}")
+    print(f"max_drop={max_drop:.6f}")
+    print(f"mean_drop={mean_drop_validated:.6f}")
+    print(f"max_Z={max_z:.3f}")
 
+    # Baseline evaluation on held-out samples (per layer for convenience).
+    baseline_eval = evaluate_model(model, tokenizer, evaluation_samples)
     print("\n=== Baseline Held-out Evaluation ===")
     print("Baseline accuracy:", baseline_eval["accuracy"])
     print("Baseline mean margin:", baseline_eval["mean_margin"])
+
+    return {
+        "layer": layer_idx,
+        "mu_rand": mu_rand,
+        "sigma_rand": sigma_rand,
+        "validated_anchors": validated_anchors,
+        "stage2_results": stage2_results,
+        "max_drop": max_drop,
+        "mean_drop": mean_drop_validated,
+        "max_z": max_z,
+        "baseline_eval": baseline_eval,
+    }
+
+
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model_name = "google/medgemma-1.5-4b-it"
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+    )
+
+    # Default experiment configuration (can be adjusted as needed).
+    cfg = EMSConfig()
+
+    # Quick sanity-run configuration toggle.
+    quick_test = True
+    if quick_test:
+        cfg.calibration_size = 40
+        cfg.stage2_samples = 40
+        layers_to_test = [2]
+    else:
+        cfg.calibration_size = 100
+        cfg.stage2_samples = 100
+        layers_to_test = [2, 8, 16, 24]
+
+    # Dataset split: configurable calibration size, fixed held-out evaluation size.
+    eval_size = 40
+    total_needed = cfg.calibration_size + eval_size
+    samples = load_mcq_dataset(n_total=total_needed)
+    calibration = samples[: cfg.calibration_size]
+    evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
+
+    adv_pairs = build_adversarial_pairs(
+        model, tokenizer, calibration, n_calib=len(calibration)
+    )
+
+    probe = MedNSQProbe(model)
+
+    all_layer_summaries: List[Dict[str, Any]] = []
+    for layer_idx in layers_to_test:
+        summary = _run_ems_for_layer(
+            model,
+            tokenizer,
+            probe,
+            adv_pairs,
+            evaluation,
+            layer_idx,
+            cfg,
+        )
+        all_layer_summaries.append(summary)
+
+    print("\n=== Final EMS Summary Across Layers ===")
+    for summary in all_layer_summaries:
+        print(
+            f"[Layer Summary] layer={summary['layer']} "
+            f"validated_anchors={len(summary['validated_anchors'])} "
+            f"max_drop={summary['max_drop']:.6f} "
+            f"mean_drop={summary['mean_drop']:.6f} "
+            f"max_Z={summary['max_z']:.3f}"
+        )
+
+    # Per-anchor logging in the requested format.
+    for summary in all_layer_summaries:
+        for anchor in summary["validated_anchors"]:
+            print(
+                "[Safety Anchor] "
+                f"layer={anchor['layer']} "
+                f"column={anchor['column']} "
+                f"drop={anchor['mean_drop']:.6f} "
+                f"Z={anchor['z_score']:.3f} "
+                f"flip={anchor['flip_rate']:.4f} "
+                f"lethal={anchor['lethal_flip_rate']:.4f}"
+            )
 
 
 if __name__ == "__main__":
