@@ -446,7 +446,7 @@ def main():
     cfg = EMSConfig()
 
     # Quick sanity-run configuration toggle.
-    quick_test = True
+    quick_test = False
     if quick_test:
         cfg.calibration_size = 40
         cfg.stage2_samples = 40
