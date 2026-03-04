@@ -1,8 +1,11 @@
 import math
+import random
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -10,6 +13,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from mednsq_data import load_mcq_dataset, build_adversarial_pairs
 from mednsq_eval import evaluate_model, _get_letter_token_ids
 from mednsq_probe import MedNSQProbe
+import json
 
 
 # EMS configuration constants (defaults for next runs)
@@ -24,11 +28,11 @@ class EMSConfig:
 
     # Per the user-specified default experiment
     layer_idx: int = 2
-    calibration_size: int = 100
+    calibration_size: int = 200
     stage1_top_k: int = 200
-    stage1_samples: int = 30
+    stage1_samples: int = 50
     stage2_top_k: int = 20
-    stage2_samples: int = 100
+    stage2_samples: int = 200
 
 
 def _batched_margins_and_predictions(
@@ -199,7 +203,7 @@ def _evaluate_column_ems(
         # This matches the desired per-sample EMS flip semantics.
         letter_token_ids_cpu = letter_token_ids.detach().cpu()
 
-        debug_limit = 5  # Print the first few samples for sanity.
+        debug_limit = 0  # Disable per-sample debug printing.
         printed_debug = 0
 
         for i, pred_idx in enumerate(preds):
@@ -248,7 +252,7 @@ def _run_ems_for_layer(
 
     stage1_top_k = min(cfg.stage1_top_k, num_cols)
     top_vals, top_indices = torch.topk(jacobian_scores, k=stage1_top_k)
-    print("Top Taylor score:", top_vals[0].item())
+    print("[Taylor Top20]", top_vals[:20].detach().cpu().tolist())
 
     # Baseline per-sample margins cached once.
     baseline_margins_all = probe.compute_per_sample_margins(adv_pairs)
@@ -433,6 +437,12 @@ def _run_ems_for_layer(
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # Reproducibility: set experiment seeds.
+    seed = 42
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
     model_name = "google/medgemma-1.5-4b-it"
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -445,16 +455,8 @@ def main():
     # Default experiment configuration (can be adjusted as needed).
     cfg = EMSConfig()
 
-    # Quick sanity-run configuration toggle.
-    quick_test = False
-    if quick_test:
-        cfg.calibration_size = 40
-        cfg.stage2_samples = 40
-        layers_to_test = [2]
-    else:
-        cfg.calibration_size = 100
-        cfg.stage2_samples = 100
-        layers_to_test = [2, 8, 16, 24]
+    # Experiment layers.
+    layers_to_test = [2, 8, 16, 24]
 
     # Dataset split: configurable calibration size, fixed held-out evaluation size.
     eval_size = 40
@@ -504,6 +506,15 @@ def main():
                 f"flip={anchor['flip_rate']:.4f} "
                 f"lethal={anchor['lethal_flip_rate']:.4f}"
             )
+
+    # Save experiment output to JSON for reproducibility.
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output = {
+        "seed": seed,
+        "layers": all_layer_summaries,
+    }
+    with open(f"ems_results_{timestamp}.json", "w") as f:
+        json.dump(output, f, indent=2)
 
 
 if __name__ == "__main__":
