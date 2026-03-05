@@ -17,7 +17,7 @@ import json
 
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 40
+RANDOM_BASELINE_COLS = 20
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 8
 
@@ -28,10 +28,10 @@ class EMSConfig:
 
     # Per the user-specified default experiment
     layer_idx: int = 2
-    calibration_size: int = 200
-    stage1_top_k: int = 80
-    stage1_samples: int = 30
-    stage2_top_k: int = 12
+    calibration_size: int = 120
+    stage1_top_k: int = 40
+    stage1_samples: int = 20
+    stage2_top_k: int = 8
     stage2_samples: int = 200
 
 
@@ -654,11 +654,6 @@ def run_attention_head_ablation_sweep(
 
         probe = MedNSQProbe(model)
 
-        margins = probe.compute_per_sample_margins(adv_pairs)
-        baseline_mean_margin = (
-            float(margins.mean().item()) if margins.numel() > 0 else 0.0
-        )
-
         all_heads = [
             (layer, head) for layer in layers for head in range(num_heads)
         ]
@@ -673,12 +668,12 @@ def run_attention_head_ablation_sweep(
                 with torch.no_grad():
                     for layer_idx, head_idx in random_heads:
                         layer = layer_stack[layer_idx]
-                        v_weight = layer.self_attn.v_proj.weight
-                        v_start = head_idx * head_dim
-                        v_end = (head_idx + 1) * head_dim
-                        saved_slice = v_weight[v_start:v_end, :].clone()
+                        weight = layer.self_attn.o_proj.weight
+                        start = head_idx * head_dim
+                        end = (head_idx + 1) * head_dim
+                        saved_slice = weight[:, start:end].clone()
                         saved_slices.append((layer_idx, head_idx, saved_slice))
-                        v_weight[v_start:v_end, :] = 0
+                        weight[:, start:end] = 0
 
                 eval_metrics = evaluate_model(model, tokenizer, evaluation)
                 accuracy = float(eval_metrics.get("accuracy", 0.0))
@@ -697,12 +692,12 @@ def run_attention_head_ablation_sweep(
                 with torch.no_grad():
                     for layer_idx, head_idx, saved_slice in saved_slices:
                         layer = layer_stack[layer_idx]
-                        v_weight = layer.self_attn.v_proj.weight
-                        v_start = head_idx * head_dim
-                        v_end = (head_idx + 1) * head_dim
-                        v_weight[v_start:v_end, :] = saved_slice.to(
-                            v_weight.dtype
-                        ).to(v_weight.device)
+                        weight = layer.self_attn.o_proj.weight
+                        start = head_idx * head_dim
+                        end = (head_idx + 1) * head_dim
+                        weight[:, start:end] = saved_slice.to(
+                            weight.dtype
+                        ).to(weight.device)
 
         del probe
         if torch.cuda.is_available():
@@ -730,6 +725,15 @@ def main():
     # Default experiment configuration (can be adjusted as needed).
     cfg = EMSConfig()
 
+    print("=== Experiment Configuration ===")
+    print("Calibration size:", cfg.calibration_size)
+    print("Stage1 top_k:", cfg.stage1_top_k)
+    print("Stage1 samples:", cfg.stage1_samples)
+    print("Stage2 top_k:", cfg.stage2_top_k)
+    print("Stage2 samples:", cfg.stage2_samples)
+    print("Random baseline cols:", RANDOM_BASELINE_COLS)
+    print("===============================")
+
     # Sweep over multiple random seeds to test anchor stability.
     seeds = [1, 2, 3]
     all_seed_results: List[Dict[str, Any]] = []
@@ -753,7 +757,7 @@ def main():
         )
 
         # Dataset split: configurable calibration size, fixed held-out evaluation size.
-        eval_size = 40
+        eval_size = 60
         total_needed = cfg.calibration_size + eval_size
         samples = load_mcq_dataset(n_total=total_needed)
         random.shuffle(samples)
@@ -844,7 +848,7 @@ def main():
         anchors=anchors,
         seeds=[1, 2, 3, 4, 5],
         calibration_size=cfg.calibration_size,
-        eval_size=40,
+        eval_size=60,
     )
 
     run_random_neuron_ablation_baseline(
@@ -853,7 +857,7 @@ def main():
         layers=[2, 8, 16, 24],
         seeds=[1, 2, 3, 4, 5],
         calibration_size=cfg.calibration_size,
-        eval_size=40,
+        eval_size=60,
         k_values=[1, 4, 8, 12, 16],
     )
 
@@ -863,7 +867,7 @@ def main():
         layers=[8, 16],
         seeds=[1, 2, 3, 4, 5],
         calibration_size=cfg.calibration_size,
-        eval_size=40,
+        eval_size=60,
         k_values=[1, 2, 4, 8],
     )
 
