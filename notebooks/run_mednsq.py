@@ -628,7 +628,9 @@ def run_attention_head_ablation_sweep(
         backbone = backbone.language_model
     layer_stack = backbone.layers
 
-    hidden_size = model.config.hidden_size
+    hidden_size = getattr(model.config, "hidden_size", None)
+    if hidden_size is None:
+        hidden_size = getattr(model.config, "hidden_dim")
     num_heads = model.config.num_attention_heads
     head_dim = getattr(model.config, "head_dim", hidden_size // num_heads)
 
@@ -719,6 +721,8 @@ def main():
     # Use device map auto-loading; seeds are handled per-run below.
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    RUN_HEAD_ONLY = True
+
     model_name = "google/medgemma-1.5-4b-it"
     layers_to_test = [8, 16]
 
@@ -734,132 +738,139 @@ def main():
     print("Random baseline cols:", RANDOM_BASELINE_COLS)
     print("===============================")
 
-    # Sweep over multiple random seeds to test anchor stability.
-    seeds = [1, 2, 3]
-    all_seed_results: List[Dict[str, Any]] = []
-
-    # Load tokenizer once; model is loaded fresh per seed for EMS discovery.
+    # Load tokenizer once.
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    for seed in seeds:
-        print(f"\n===== RUNNING SEED {seed} =====")
-        print(f"Calibration size: {cfg.calibration_size}")
+    if RUN_HEAD_ONLY:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+    else:
+        # Sweep over multiple random seeds to test anchor stability.
+        seeds = [1, 2, 3]
+        all_seed_results: List[Dict[str, Any]] = []
 
-        # Reproducibility: set experiment seeds for this run.
-        torch.manual_seed(seed)
-        random.seed(seed)
-        np.random.seed(seed)
+        for seed in seeds:
+            print(f"\n===== RUNNING SEED {seed} =====")
+            print(f"Calibration size: {cfg.calibration_size}")
 
+            # Reproducibility: set experiment seeds for this run.
+            torch.manual_seed(seed)
+            random.seed(seed)
+            np.random.seed(seed)
+
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
+            )
+
+            # Dataset split: configurable calibration size, fixed held-out evaluation size.
+            eval_size = 60
+            total_needed = cfg.calibration_size + eval_size
+            samples = load_mcq_dataset(n_total=total_needed)
+            random.shuffle(samples)
+            calibration = samples[: cfg.calibration_size]
+            evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
+
+            adv_pairs = build_adversarial_pairs(
+                model, tokenizer, calibration, n_calib=len(calibration)
+            )
+
+            probe = MedNSQProbe(model)
+
+            all_layer_summaries: List[Dict[str, Any]] = []
+            for layer_idx in layers_to_test:
+                summary = _run_ems_for_layer(
+                    model,
+                    tokenizer,
+                    probe,
+                    adv_pairs,
+                    evaluation,
+                    layer_idx,
+                    cfg,
+                )
+                all_layer_summaries.append(summary)
+
+            # Compact per-seed summary.
+            print("\n=== Seed Summary ===")
+            print(f"seed={seed}")
+            for layer_idx in layers_to_test:
+                layer_summary = next(
+                    s for s in all_layer_summaries if s["layer"] == layer_idx
+                )
+                num_anchors = len(layer_summary["validated_anchors"])
+                print(f"layer{layer_idx} anchors={num_anchors}")
+
+            # Store per-seed results.
+            seed_summary = {
+                "seed": seed,
+                "layers": all_layer_summaries,
+            }
+            all_seed_results.append(seed_summary)
+
+            # Clear per-seed probe and model; next seed gets a fresh model.
+            del probe
+            del model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        # Load model once for ablation experiments (no weight modifications during ablation per seed).
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
 
-        # Dataset split: configurable calibration size, fixed held-out evaluation size.
-        eval_size = 60
-        total_needed = cfg.calibration_size + eval_size
-        samples = load_mcq_dataset(n_total=total_needed)
-        random.shuffle(samples)
-        calibration = samples[: cfg.calibration_size]
-        evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
+        # Final EMS summary across all seeds is stored in all_seed_results.
+        print("\n=== Anchor Stability Summary ===")
+        for layer_idx in layers_to_test:
+            counts: List[int] = []
+            for seed_result in all_seed_results:
+                layer_summary = next(
+                    s for s in seed_result["layers"] if s["layer"] == layer_idx
+                )
+                counts.append(len(layer_summary["validated_anchors"]))
+            mean_anchors = sum(counts) / len(counts) if counts else 0.0
+            print(f"layer{layer_idx} mean anchors = {mean_anchors:.3f}")
 
-        adv_pairs = build_adversarial_pairs(
-            model, tokenizer, calibration, n_calib=len(calibration)
+        # Save experiment output to JSON for reproducibility.
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        with open(f"ems_seed_sweep_{timestamp}.json", "w") as f:
+            json.dump(all_seed_results, f, indent=2)
+
+        print("\n=== Using Manually Selected Anchors For Ablation ===")
+
+        anchors = [
+            (16, 1761), (16, 2056), (16, 3433), (16, 3442), (16, 1471),
+            (16, 3647), (16, 7918), (16, 6047), (16, 4273), (16, 6845),
+            (8, 3977), (8, 2990), (8, 5386), (8, 3347), (8, 2069),
+            (8, 1577),
+        ]
+
+        for (layer, column) in anchors:
+            print(f"(layer={layer}, column={column})")
+
+        run_multi_anchor_ablation_sweep(
+            model=model,
+            tokenizer=tokenizer,
+            anchors=anchors,
+            seeds=[1, 2, 3, 4, 5],
+            calibration_size=cfg.calibration_size,
+            eval_size=60,
         )
 
-        probe = MedNSQProbe(model)
-
-        all_layer_summaries: List[Dict[str, Any]] = []
-        for layer_idx in layers_to_test:
-            summary = _run_ems_for_layer(
-                model,
-                tokenizer,
-                probe,
-                adv_pairs,
-                evaluation,
-                layer_idx,
-                cfg,
-            )
-            all_layer_summaries.append(summary)
-
-        # Compact per-seed summary.
-        print("\n=== Seed Summary ===")
-        print(f"seed={seed}")
-        for layer_idx in layers_to_test:
-            layer_summary = next(
-                s for s in all_layer_summaries if s["layer"] == layer_idx
-            )
-            num_anchors = len(layer_summary["validated_anchors"])
-            print(f"layer{layer_idx} anchors={num_anchors}")
-
-        # Store per-seed results.
-        seed_summary = {
-            "seed": seed,
-            "layers": all_layer_summaries,
-        }
-        all_seed_results.append(seed_summary)
-
-        # Clear per-seed probe and model; next seed gets a fresh model.
-        del probe
-        del model
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-    # Load model once for ablation experiments (no weight modifications during ablation per seed).
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-
-    # Final EMS summary across all seeds is stored in all_seed_results.
-    print("\n=== Anchor Stability Summary ===")
-    for layer_idx in layers_to_test:
-        counts: List[int] = []
-        for seed_result in all_seed_results:
-            layer_summary = next(
-                s for s in seed_result["layers"] if s["layer"] == layer_idx
-            )
-            counts.append(len(layer_summary["validated_anchors"]))
-        mean_anchors = sum(counts) / len(counts) if counts else 0.0
-        print(f"layer{layer_idx} mean anchors = {mean_anchors:.3f}")
-
-    # Save experiment output to JSON for reproducibility.
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    with open(f"ems_seed_sweep_{timestamp}.json", "w") as f:
-        json.dump(all_seed_results, f, indent=2)
-
-    print("\n=== Using Manually Selected Anchors For Ablation ===")
-
-    anchors = [
-        (16, 1761), (16, 2056), (16, 3433), (16, 3442), (16, 1471),
-        (16, 3647), (16, 7918), (16, 6047), (16, 4273), (16, 6845),
-        (8, 3977), (8, 2990), (8, 5386), (8, 3347), (8, 2069),
-        (8, 1577),
-    ]
-
-    for (layer, column) in anchors:
-        print(f"(layer={layer}, column={column})")
-
-    run_multi_anchor_ablation_sweep(
-        model=model,
-        tokenizer=tokenizer,
-        anchors=anchors,
-        seeds=[1, 2, 3, 4, 5],
-        calibration_size=cfg.calibration_size,
-        eval_size=60,
-    )
-
-    run_random_neuron_ablation_baseline(
-        model=model,
-        tokenizer=tokenizer,
-        layers=[2, 8, 16, 24],
-        seeds=[1, 2, 3, 4, 5],
-        calibration_size=cfg.calibration_size,
-        eval_size=60,
-        k_values=[1, 4, 8, 12, 16],
-    )
+        run_random_neuron_ablation_baseline(
+            model=model,
+            tokenizer=tokenizer,
+            layers=[2, 8, 16, 24],
+            seeds=[1, 2, 3, 4, 5],
+            calibration_size=cfg.calibration_size,
+            eval_size=60,
+            k_values=[1, 4, 8, 12, 16],
+        )
 
     run_attention_head_ablation_sweep(
         model=model,
