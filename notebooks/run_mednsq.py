@@ -10,7 +10,7 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from mednsq_data import load_mcq_dataset, build_adversarial_pairs
+from mednsq_data import load_mcq_dataset, build_adversarial_pairs, format_prompt
 from mednsq_eval import evaluate_model, _get_letter_token_ids
 from mednsq_probe import MedNSQProbe
 import json
@@ -961,6 +961,159 @@ def run_attention_head_ablation_sweep(
         print(f"Mean margin: {mean_margin}")
 
 
+def run_head_to_anchor_attribution(
+    model,
+    tokenizer,
+    anchors: List[Tuple[int, int]],
+    calibration_samples: List[Dict[str, Any]],
+    n_prompts: int = 48,
+    layer_range: Tuple[int, int] = (6, 21),
+    output_path: str = "head_anchor_attribution.json",
+    batch_size: int = 8,
+) -> None:
+    """Identify which attention heads causally influence EMS anchor neurons by ablating
+    each head and measuring change in anchor activations at the final token.
+    Records attribution per anchor neuron and runs prompts in batches for speed.
+    """
+    model.eval()
+    device = next(model.parameters()).device
+    pad_token_id = getattr(tokenizer, "pad_token_id", None) or getattr(tokenizer, "eos_token_id", 0)
+
+    backbone = getattr(model, "model", model)
+    if hasattr(backbone, "language_model"):
+        backbone = backbone.language_model
+    layer_stack = backbone.layers
+
+    o_proj_weight = layer_stack[0].self_attn.o_proj.weight
+    hidden_size = o_proj_weight.shape[0]
+    head_dim = 128
+    num_heads = hidden_size // head_dim
+
+    anchors_by_layer: Dict[int, List[int]] = {}
+    for (layer_idx, col_idx) in anchors:
+        if layer_idx not in anchors_by_layer:
+            anchors_by_layer[layer_idx] = []
+        anchors_by_layer[layer_idx].append(col_idx)
+
+    if not anchors_by_layer:
+        print("No anchors for head-to-anchor attribution.")
+        return
+
+    n_prompts = min(n_prompts, len(calibration_samples))
+    prompt_list: List[Tuple[torch.Tensor, torch.Tensor]] = []
+    with torch.no_grad():
+        for i in range(n_prompts):
+            sample = calibration_samples[i]
+            prompt = format_prompt(sample["question"], sample["options"])
+            enc = tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
+            prompt_list.append((
+                enc["input_ids"].to(device),
+                enc["attention_mask"].to(device),
+            ))
+
+    def _pad_batch(items: List[Tuple[torch.Tensor, torch.Tensor]]) -> Tuple[torch.Tensor, torch.Tensor]:
+        ids_list = [x[0] for x in items]
+        mask_list = [x[1] for x in items]
+        max_len = max(ids.shape[1] for ids in ids_list)
+        padded_ids = []
+        padded_mask = []
+        for ids, mask in items:
+            seq_len = ids.shape[1]
+            if seq_len < max_len:
+                pad_ids = torch.full(
+                    (ids.shape[0], max_len - seq_len),
+                    pad_token_id,
+                    dtype=ids.dtype,
+                    device=ids.device,
+                )
+                pad_mask = torch.zeros(ids.shape[0], max_len - seq_len, dtype=mask.dtype, device=mask.device)
+                ids = torch.cat([ids, pad_ids], dim=1)
+                mask = torch.cat([mask, pad_mask], dim=1)
+            padded_ids.append(ids)
+            padded_mask.append(mask)
+        return torch.cat(padded_ids, dim=0), torch.cat(padded_mask, dim=0)
+
+    batches: List[Tuple[torch.Tensor, torch.Tensor]] = []
+    for start in range(0, len(prompt_list), batch_size):
+        batch = prompt_list[start : start + batch_size]
+        batches.append(_pad_batch(batch))
+
+    def _run_and_capture_anchors(
+        stored_anchor_values: Dict[Tuple[int, int], List[torch.Tensor]],
+    ) -> None:
+        handles = []
+        for layer_idx, cols in anchors_by_layer.items():
+            down_proj = layer_stack[layer_idx].mlp.down_proj
+
+            def capture_hook(module, input, layer=layer_idx, anchor_cols=cols):
+                h = input[0]
+                for col in anchor_cols:
+                    stored_anchor_values[(layer, col)].append(h[:, -1, col].detach().cpu())
+
+            handles.append(down_proj.register_forward_pre_hook(capture_hook))
+
+        with torch.no_grad():
+            for input_ids, attention_mask in batches:
+                model(input_ids=input_ids, attention_mask=attention_mask)
+
+        for h in handles:
+            h.remove()
+
+    stored_baseline: Dict[Tuple[int, int], List[torch.Tensor]] = {
+        (layer_idx, col_idx): [] for (layer_idx, col_idx) in anchors
+    }
+    _run_and_capture_anchors(stored_baseline)
+
+    baseline_anchor_activation: Dict[Tuple[int, int], float] = {}
+    for (layer_idx, col_idx) in anchors:
+        stacked = torch.cat(stored_baseline[(layer_idx, col_idx)], dim=0)
+        baseline_anchor_activation[(layer_idx, col_idx)] = stacked.mean().item()
+
+    results: List[Dict[str, Any]] = []
+    layer_start, layer_end = layer_range
+
+    with torch.no_grad():
+        for layer_idx in range(layer_start, layer_end):
+            layer = layer_stack[layer_idx]
+            weight = layer.self_attn.o_proj.weight
+            for head_idx in range(num_heads):
+                start = head_idx * head_dim
+                end = (head_idx + 1) * head_dim
+                saved_slice = weight[:, start:end].clone()
+                weight[:, start:end] = 0
+
+                stored_after: Dict[Tuple[int, int], List[torch.Tensor]] = {
+                    (al, ac): [] for (al, ac) in anchors
+                }
+                _run_and_capture_anchors(stored_after)
+
+                for (anchor_layer, anchor_column) in anchors:
+                    stacked = torch.cat(stored_after[(anchor_layer, anchor_column)], dim=0)
+                    activation_after_mean = stacked.mean().item()
+                    delta = abs(activation_after_mean - baseline_anchor_activation[(anchor_layer, anchor_column)])
+
+                    results.append({
+                        "head_layer": layer_idx,
+                        "head": head_idx,
+                        "anchor_layer": anchor_layer,
+                        "anchor_column": anchor_column,
+                        "delta": float(delta),
+                    })
+
+                weight[:, start:end] = saved_slice.to(weight.dtype).to(weight.device)
+
+    results.sort(key=lambda x: x["delta"], reverse=True)
+
+    print("\n=== Head-to-Anchor Attribution ===")
+    print("Top 15 head → anchor interactions:")
+    for r in results[:15]:
+        print(f"  Head {r['head_layer']}.{r['head']} → Anchor {r['anchor_layer']}.{r['anchor_column']} delta {r['delta']:.2f}")
+
+    with open(output_path, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"\nResults saved to {output_path}")
+
+
 def main():
     # Use device map auto-loading; seeds are handled per-run below.
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -1016,6 +1169,15 @@ def main():
                 n_samples=120,
                 per_anchor_report_only=True,
             )
+        print("\n=== Head-to-Anchor Attribution ===")
+        run_head_to_anchor_attribution(
+            model=model,
+            tokenizer=tokenizer,
+            anchors=anchors,
+            calibration_samples=calibration_samples,
+            n_prompts=48,
+            layer_range=(6, 21),
+        )
     else:
         # Sweep over multiple random seeds to test anchor stability.
         seeds = [1, 2, 3]
@@ -1141,6 +1303,16 @@ def main():
                 n_samples=120,
                 per_anchor_report_only=True,
             )
+
+        print("\n=== Head-to-Anchor Attribution ===")
+        run_head_to_anchor_attribution(
+            model=model,
+            tokenizer=tokenizer,
+            anchors=anchors,
+            calibration_samples=calibration_samples,
+            n_prompts=48,
+            layer_range=(6, 21),
+        )
 
         run_multi_anchor_ablation_sweep(
             model=model,
