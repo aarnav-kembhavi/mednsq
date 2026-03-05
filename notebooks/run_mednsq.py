@@ -610,6 +610,116 @@ def run_random_neuron_ablation_baseline(
         print(f"Mean margin: {mean_margin}")
 
 
+def run_attention_head_ablation_sweep(
+    model,
+    tokenizer,
+    layers: List[int],
+    seeds: List[int],
+    calibration_size: int,
+    eval_size: int,
+    k_values: List[int],
+) -> None:
+    """Run attention head ablation sweep; average results over seeds."""
+
+    print("\n=== Attention Head Ablation Sweep ===")
+
+    backbone = getattr(model, "model", model)
+    if hasattr(backbone, "language_model"):
+        backbone = backbone.language_model
+    layer_stack = backbone.layers
+
+    hidden_size = model.config.hidden_size
+    num_heads = model.config.num_attention_heads
+    head_dim = getattr(model.config, "head_dim", hidden_size // num_heads)
+
+    sweep_results: Dict[int, Dict[str, List[float]]] = {
+        k: {"accuracies": [], "margins": []} for k in k_values
+    }
+
+    for seed in seeds:
+        torch.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+
+        total_needed = calibration_size + eval_size
+        samples = load_mcq_dataset(n_total=total_needed)
+        random.shuffle(samples)
+
+        calibration = samples[:calibration_size]
+        evaluation = samples[calibration_size : calibration_size + eval_size]
+
+        adv_pairs = build_adversarial_pairs(
+            model, tokenizer, calibration, n_calib=len(calibration)
+        )
+
+        probe = MedNSQProbe(model)
+
+        margins = probe.compute_per_sample_margins(adv_pairs)
+        baseline_mean_margin = (
+            float(margins.mean().item()) if margins.numel() > 0 else 0.0
+        )
+
+        all_heads = [
+            (layer, head) for layer in layers for head in range(num_heads)
+        ]
+
+        for k in k_values:
+            if k > len(all_heads):
+                continue
+            random_heads = random.sample(all_heads, k)
+            saved_slices: List[Tuple[int, int, torch.Tensor]] = []
+
+            try:
+                with torch.no_grad():
+                    for layer_idx, head_idx in random_heads:
+                        layer = layer_stack[layer_idx]
+                        v_weight = layer.self_attn.v_proj.weight
+                        v_start = head_idx * head_dim
+                        v_end = (head_idx + 1) * head_dim
+                        saved_slice = v_weight[v_start:v_end, :].clone()
+                        saved_slices.append((layer_idx, head_idx, saved_slice))
+                        v_weight[v_start:v_end, :] = 0
+
+                eval_metrics = evaluate_model(model, tokenizer, evaluation)
+                accuracy = float(eval_metrics.get("accuracy", 0.0))
+
+                margins_ablated = probe.compute_per_sample_margins(adv_pairs)
+                mean_margin = (
+                    float(margins_ablated.mean().item())
+                    if margins_ablated.numel() > 0
+                    else 0.0
+                )
+
+                sweep_results[k]["accuracies"].append(accuracy)
+                sweep_results[k]["margins"].append(mean_margin)
+
+            finally:
+                with torch.no_grad():
+                    for layer_idx, head_idx, saved_slice in saved_slices:
+                        layer = layer_stack[layer_idx]
+                        v_weight = layer.self_attn.v_proj.weight
+                        v_start = head_idx * head_dim
+                        v_end = (head_idx + 1) * head_dim
+                        v_weight[v_start:v_end, :] = saved_slice.to(
+                            v_weight.dtype
+                        ).to(v_weight.device)
+
+        del probe
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    for k in k_values:
+        accs = sweep_results[k]["accuracies"]
+        margins = sweep_results[k]["margins"]
+        if not accs:
+            continue
+        mean_acc = sum(accs) / len(accs)
+        mean_margin = sum(margins) / len(margins) if margins else 0.0
+        print(f"\nHeads removed: {k}")
+        print(f"Mean accuracy: {mean_acc}")
+        print(f"Mean margin: {mean_margin}")
+
+
 def main():
     # Use device map auto-loading; seeds are handled per-run below.
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -745,6 +855,16 @@ def main():
         calibration_size=cfg.calibration_size,
         eval_size=40,
         k_values=[1, 4, 8, 12, 16],
+    )
+
+    run_attention_head_ablation_sweep(
+        model=model,
+        tokenizer=tokenizer,
+        layers=[8, 16],
+        seeds=[1, 2, 3, 4, 5],
+        calibration_size=cfg.calibration_size,
+        eval_size=40,
+        k_values=[1, 2, 4, 8],
     )
 
 
