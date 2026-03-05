@@ -629,14 +629,13 @@ def run_attention_head_ablation_sweep(
     layer_stack = backbone.layers
 
     sample_layer = layer_stack[layers[0]]
-    num_heads = sample_layer.self_attn.num_heads
 
-    # derive head_dim directly from the attention projection weight
-    sample_layer = layer_stack[layers[0]]
     o_proj_weight = sample_layer.self_attn.o_proj.weight
-
     hidden_size = o_proj_weight.shape[0]
-    head_dim = hidden_size // num_heads
+
+    # assume standard head size of 128 for Gemma
+    head_dim = 128
+    num_heads = hidden_size // head_dim
 
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in k_values
