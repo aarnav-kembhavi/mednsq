@@ -17,7 +17,7 @@ import json
 
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 100
+RANDOM_BASELINE_COLS = 40
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 8
 
@@ -29,9 +29,9 @@ class EMSConfig:
     # Per the user-specified default experiment
     layer_idx: int = 2
     calibration_size: int = 200
-    stage1_top_k: int = 200
-    stage1_samples: int = 50
-    stage2_top_k: int = 20
+    stage1_top_k: int = 80
+    stage1_samples: int = 30
+    stage2_top_k: int = 12
     stage2_samples: int = 200
 
 
@@ -615,13 +615,13 @@ def main():
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model_name = "google/medgemma-1.5-4b-it"
-    layers_to_test = [2, 8, 16, 24]
+    layers_to_test = [8, 16]
 
     # Default experiment configuration (can be adjusted as needed).
     cfg = EMSConfig()
 
     # Sweep over multiple random seeds to test anchor stability.
-    seeds = [1, 2, 3, 4, 5]
+    seeds = [1, 2, 3]
     all_seed_results: List[Dict[str, Any]] = []
 
     # Load tokenizer once; model is loaded fresh per seed for EMS discovery.
