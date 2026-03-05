@@ -442,7 +442,7 @@ def _run_ems_for_layer(
 
 
 def run_multi_anchor_ablation_sweep(
-    model_name: str,
+    model,
     tokenizer,
     anchors: List[Tuple[int, int]],
     seeds: List[int],
@@ -463,12 +463,6 @@ def run_multi_anchor_ablation_sweep(
         torch.manual_seed(seed)
         random.seed(seed)
         np.random.seed(seed)
-
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-        )
 
         total_needed = calibration_size + eval_size
         samples = load_mcq_dataset(n_total=total_needed)
@@ -515,7 +509,6 @@ def run_multi_anchor_ablation_sweep(
                     probe.restore_column(layer_idx, col_idx, original_col)
 
         del probe
-        del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -534,6 +527,89 @@ def run_multi_anchor_ablation_sweep(
         print(f"Mean margin: {mean_margin}")
 
 
+def run_random_neuron_ablation_baseline(
+    model,
+    tokenizer,
+    layers: List[int],
+    seeds: List[int],
+    calibration_size: int,
+    eval_size: int,
+    k_values: List[int],
+) -> None:
+    """Run multi-neuron ablation with randomly sampled neurons; average over seeds."""
+
+    N_COLS = 10240  # columns per layer (~10240 for MedGemma MLP down_proj)
+
+    print("\n=== Random Neuron Ablation Baseline ===")
+
+    sweep_results: Dict[int, Dict[str, List[float]]] = {
+        k: {"accuracies": [], "margins": []} for k in k_values
+    }
+
+    for seed in seeds:
+        torch.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+
+        total_needed = calibration_size + eval_size
+        samples = load_mcq_dataset(n_total=total_needed)
+        random.shuffle(samples)
+
+        calibration = samples[:calibration_size]
+        evaluation = samples[calibration_size : calibration_size + eval_size]
+
+        adv_pairs = build_adversarial_pairs(
+            model, tokenizer, calibration, n_calib=len(calibration)
+        )
+
+        probe = MedNSQProbe(model)
+
+        for k in k_values:
+            # Sample k unique random (layer, column) neurons.
+            random_neurons_set: set = set()
+            while len(random_neurons_set) < k:
+                random_neurons_set.add(
+                    (random.choice(layers), random.randint(0, N_COLS - 1))
+                )
+            random_neurons = list(random_neurons_set)
+            saved_columns: List[Tuple[int, int, torch.Tensor]] = []
+
+            try:
+                for layer_idx, col_idx in random_neurons:
+                    original_col = probe.simulate_column_crush(layer_idx, col_idx)
+                    saved_columns.append((layer_idx, col_idx, original_col))
+
+                eval_metrics = evaluate_model(model, tokenizer, evaluation)
+                accuracy = float(eval_metrics.get("accuracy", 0.0))
+
+                margins = probe.compute_per_sample_margins(adv_pairs)
+                mean_margin = (
+                    float(margins.mean().item()) if margins.numel() > 0 else 0.0
+                )
+
+                sweep_results[k]["accuracies"].append(accuracy)
+                sweep_results[k]["margins"].append(mean_margin)
+
+            finally:
+                for layer_idx, col_idx, original_col in saved_columns:
+                    probe.restore_column(layer_idx, col_idx, original_col)
+
+        del probe
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    for k in k_values:
+        accs = sweep_results[k]["accuracies"]
+        margins = sweep_results[k]["margins"]
+        if not accs:
+            continue
+        mean_acc = sum(accs) / len(accs)
+        mean_margin = sum(margins) / len(margins) if margins else 0.0
+        print(f"\nRandom neurons removed: {k}")
+        print(f"Mean accuracy: {mean_acc}")
+        print(f"Mean margin: {mean_margin}")
+
+
 def main():
     # Use device map auto-loading; seeds are handled per-run below.
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -548,13 +624,8 @@ def main():
     seeds = [1, 2, 3, 4, 5]
     all_seed_results: List[Dict[str, Any]] = []
 
-    # Load tokenizer and model once; weights do not change across seeds.
+    # Load tokenizer once; model is loaded fresh per seed for EMS discovery.
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
 
     for seed in seeds:
         print(f"\n===== RUNNING SEED {seed} =====")
@@ -564,6 +635,12 @@ def main():
         torch.manual_seed(seed)
         random.seed(seed)
         np.random.seed(seed)
+
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
 
         # Dataset split: configurable calibration size, fixed held-out evaluation size.
         eval_size = 40
@@ -609,10 +686,18 @@ def main():
         }
         all_seed_results.append(seed_summary)
 
-        # Clear per-seed probe and GPU cache before next seed.
+        # Clear per-seed probe and model; next seed gets a fresh model.
         del probe
+        del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+    # Load model once for ablation experiments (no weight modifications during ablation per seed).
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+    )
 
     # Final EMS summary across all seeds is stored in all_seed_results.
     print("\n=== Anchor Stability Summary ===")
@@ -645,21 +730,36 @@ def main():
     ):
         print(f"(layer={layer}, column={column}) appeared in {count}/{num_seeds} seeds")
 
-    # Multi-anchor ablation sweep on a fixed set of discovered anchors.
+    # Select anchors by majority rule: appeared in more than half of seeds.
+    min_count = len(seeds) // 2 + 1
     anchors = [
-        (16, 1761),
-        (16, 2056),
-        (16, 3433),
-        (8, 3977),
-        (8, 3347),
+        (layer, column)
+        for (layer, column), count in anchor_freq.items()
+        if count >= min_count
     ]
+    anchors = sorted(anchors, key=lambda x: anchor_freq[x], reverse=True)
+
+    print("\n=== Anchors Selected For Ablation ===")
+    for (layer, column) in anchors:
+        print(f"(layer={layer}, column={column}) freq={anchor_freq[(layer, column)]}")
+
     run_multi_anchor_ablation_sweep(
-        model_name=model_name,
+        model=model,
         tokenizer=tokenizer,
         anchors=anchors,
         seeds=[1, 2, 3, 4, 5],
         calibration_size=cfg.calibration_size,
         eval_size=40,
+    )
+
+    run_random_neuron_ablation_baseline(
+        model=model,
+        tokenizer=tokenizer,
+        layers=[2, 8, 16, 24],
+        seeds=[1, 2, 3, 4, 5],
+        calibration_size=cfg.calibration_size,
+        eval_size=40,
+        k_values=[1, 3, 5],
     )
 
 
