@@ -628,11 +628,14 @@ def run_attention_head_ablation_sweep(
         backbone = backbone.language_model
     layer_stack = backbone.layers
 
-    hidden_size = getattr(model.config, "hidden_size", None)
-    if hidden_size is None:
-        hidden_size = getattr(model.config, "hidden_dim")
     num_heads = model.config.num_attention_heads
-    head_dim = getattr(model.config, "head_dim", hidden_size // num_heads)
+
+    # derive head_dim directly from the attention projection weight
+    sample_layer = layer_stack[layers[0]]
+    o_proj_weight = sample_layer.self_attn.o_proj.weight
+
+    hidden_size = o_proj_weight.shape[0]
+    head_dim = hidden_size // num_heads
 
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in k_values
