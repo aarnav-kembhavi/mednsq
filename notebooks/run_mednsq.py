@@ -453,7 +453,7 @@ def run_multi_anchor_ablation_sweep(
 
     print("\n=== Multi Anchor Ablation Sweep ===")
 
-    ablation_counts = [1, 3, 5]
+    ablation_counts = [1, 4, 8, 12, 16]
     # Store per-ablation metrics across seeds.
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in ablation_counts
@@ -719,11 +719,10 @@ def main():
     print("\n=== Using Manually Selected Anchors For Ablation ===")
 
     anchors = [
-        (16, 1761),
-        (16, 2056),
-        (16, 3433),
-        (8, 3977),
-        (8, 3347),
+        (16, 1761), (16, 2056), (16, 3433), (16, 3442), (16, 1471),
+        (16, 3647), (16, 7918), (16, 6047), (16, 4273), (16, 6845),
+        (8, 3977), (8, 2990), (8, 5386), (8, 3347), (8, 2069),
+        (8, 1577),
     ]
 
     for (layer, column) in anchors:
@@ -745,7 +744,7 @@ def main():
         seeds=[1, 2, 3, 4, 5],
         calibration_size=cfg.calibration_size,
         eval_size=40,
-        k_values=[1, 3, 5],
+        k_values=[1, 4, 8, 12, 16],
     )
 
 
