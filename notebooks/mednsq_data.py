@@ -113,12 +113,29 @@ def build_adversarial_pairs(
             neg_local_idx = int(torch.argmax(masked_probs, dim=-1).item())
             neg_id = int(letter_token_ids[neg_local_idx].item())
 
+            # Safe prompt: same structure as adversarial, but correct option replaces distractor.
+            safe_options = list(sample["options"])
+            safe_options[correct_index], safe_options[neg_local_idx] = (
+                safe_options[neg_local_idx],
+                safe_options[correct_index],
+            )
+            safe_prompt = format_prompt(sample["question"], safe_options)
+            safe_enc = tokenizer(
+                safe_prompt,
+                return_tensors="pt",
+                add_special_tokens=True,
+            )
+            safe_input_ids = safe_enc["input_ids"].to(device)
+            safe_attention_mask = safe_enc["attention_mask"].to(device)
+
             adv_pairs.append(
                 {
                     "correct_letter_index": correct_index,
                     "neg_letter_index": neg_local_idx,
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
+                    "safe_input_ids": safe_input_ids,
+                    "safe_attention_mask": safe_attention_mask,
                     "pos_id": pos_id,
                     "neg_id": neg_id,
                 }

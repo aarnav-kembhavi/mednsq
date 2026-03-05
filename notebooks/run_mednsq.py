@@ -610,6 +610,221 @@ def run_random_neuron_ablation_baseline(
         print(f"Mean margin: {mean_margin}")
 
 
+def _run_forward_no_hooks(model, input_ids, attention_mask):
+    """Single forward pass with no hooks; returns logits at last position."""
+    with torch.no_grad():
+        out = model(input_ids=input_ids, attention_mask=attention_mask)
+    return out.logits[:, -1, :]
+
+
+def run_anchor_activation_patching_experiment(
+    model,
+    tokenizer,
+    anchors: List[Tuple[int, int]],
+    calibration_samples: List[Dict[str, Any]],
+    n_samples: int = 40,
+    per_anchor_report_only: bool = False,
+) -> None:
+    """Counterfactual activation patching on anchor neurons: patch safe-run activations
+    into adversarial runs and measure margin/accuracy change. Includes random-neuron control.
+    When per_anchor_report_only=True, only runs anchor patching and prints a single-line report
+    (for per-anchor causal strength ranking).
+    """
+    model.eval()
+    device = next(model.parameters()).device
+    letter_token_ids = _get_letter_token_ids(tokenizer).to(device)
+
+    backbone = getattr(model, "model", model)
+    if hasattr(backbone, "language_model"):
+        backbone = backbone.language_model
+    layer_stack = backbone.layers
+    intermediate_size = layer_stack[0].mlp.down_proj.weight.shape[1]
+
+    adv_pairs = build_adversarial_pairs(
+        model, tokenizer, calibration_samples, n_calib=len(calibration_samples)
+    )
+    n_samples = min(n_samples, len(adv_pairs))
+    if n_samples == 0:
+        print("No samples for anchor activation patching.")
+        return
+
+    # Group anchors by layer for hooks
+    anchors_by_layer: Dict[int, List[int]] = {}
+    for (layer_idx, col_idx) in anchors:
+        if layer_idx not in anchors_by_layer:
+            anchors_by_layer[layer_idx] = []
+        anchors_by_layer[layer_idx].append(col_idx)
+
+    def _run_with_save_hooks(stored: Dict[Tuple[int, int], torch.Tensor], input_ids, attention_mask):
+        handles = []
+        for layer_idx, cols in anchors_by_layer.items():
+            down_proj = layer_stack[layer_idx].mlp.down_proj
+
+            def _save_hook(module, input, layer=layer_idx, cols_list=cols):
+                x = input[0]
+                for col in cols_list:
+                    stored[(layer, col)] = x[0, -1, col].detach().clone()
+
+            handles.append(down_proj.register_forward_pre_hook(_save_hook))
+
+        with torch.no_grad():
+            out = model(input_ids=input_ids, attention_mask=attention_mask)
+        for h in handles:
+            h.remove()
+        return out.logits[:, -1, :]
+
+    def _run_with_patch_hooks(stored: Dict[Tuple[int, int], torch.Tensor], input_ids, attention_mask):
+        handles = []
+        for layer_idx, cols in anchors_by_layer.items():
+            down_proj = layer_stack[layer_idx].mlp.down_proj
+
+            def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
+                x = input[0]
+                out = x.clone()
+                for col in cols_list:
+                    if (layer, col) in stored:
+                        out[0, -1, col] = stored[(layer, col)].to(out.dtype).to(out.device)
+                return (out,)
+
+            handles.append(down_proj.register_forward_pre_hook(_patch_hook))
+
+        with torch.no_grad():
+            out = model(input_ids=input_ids, attention_mask=attention_mask)
+        for h in handles:
+            h.remove()
+        return out.logits[:, -1, :]
+
+    def _margin_and_correct(logits, pair):
+        pos_id = pair["pos_id"]
+        neg_id = pair["neg_id"]
+        margin = (logits[0, pos_id] - logits[0, neg_id]).item()
+        letter_logits = logits[0, letter_token_ids]
+        pred_idx = torch.argmax(letter_logits).item()
+        pred_token = letter_token_ids[pred_idx].item()
+        correct = 1 if pred_token == pos_id else 0
+        return margin, correct
+
+    # ---- Anchor patching ----
+    margin_shifts_anchor = []
+    correct_baseline_anchor = 0
+    correct_patched_anchor = 0
+
+    with torch.no_grad():
+        for i in range(n_samples):
+            pair = adv_pairs[i]
+            safe_input_ids = pair["safe_input_ids"].to(device)
+            safe_attention_mask = pair["safe_attention_mask"].to(device)
+
+            stored_activations: Dict[Tuple[int, int], torch.Tensor] = {}
+            _run_with_save_hooks(stored_activations, safe_input_ids, safe_attention_mask)
+
+            logits_baseline = _run_forward_no_hooks(model, pair["input_ids"], pair["attention_mask"])
+            baseline_margin, correct_base = _margin_and_correct(logits_baseline, pair)
+
+            logits_patched = _run_with_patch_hooks(stored_activations, pair["input_ids"], pair["attention_mask"])
+            patched_margin, correct_patch = _margin_and_correct(logits_patched, pair)
+
+            margin_shifts_anchor.append(patched_margin - baseline_margin)
+            correct_baseline_anchor += correct_base
+            correct_patched_anchor += correct_patch
+
+    mean_margin_shift_anchor = float(np.mean(margin_shifts_anchor))
+    acc_baseline_anchor = correct_baseline_anchor / n_samples
+    acc_patched_anchor = correct_patched_anchor / n_samples
+    accuracy_change_anchor = acc_patched_anchor - acc_baseline_anchor
+
+    if per_anchor_report_only:
+        layer_idx, col_idx = anchors[0]
+        print(f"Anchor (layer={layer_idx} col={col_idx})")
+        print(f"Mean margin shift: {mean_margin_shift_anchor}")
+        return
+
+    print("\n=== Anchor Activation Patching ===")
+    print(f"Mean margin shift: {mean_margin_shift_anchor}")
+    print(f"Accuracy change: {accuracy_change_anchor}")
+
+    # ---- Random neuron control ----
+    anchor_layers = list(anchors_by_layer.keys())
+    n_random = len(anchors)
+    random_neurons_set: set = set()
+    while len(random_neurons_set) < n_random:
+        random_neurons_set.add((random.choice(anchor_layers), random.randint(0, intermediate_size - 1)))
+    random_neurons = list(random_neurons_set)
+    random_by_layer: Dict[int, List[int]] = {}
+    for (layer_idx, col_idx) in random_neurons:
+        if layer_idx not in random_by_layer:
+            random_by_layer[layer_idx] = []
+        random_by_layer[layer_idx].append(col_idx)
+
+    def _run_with_save_hooks_random(stored, input_ids, attention_mask):
+        handles = []
+        for layer_idx, cols in random_by_layer.items():
+            down_proj = layer_stack[layer_idx].mlp.down_proj
+
+            def _save_hook(module, input, layer=layer_idx, cols_list=cols):
+                x = input[0]
+                for col in cols_list:
+                    stored[(layer, col)] = x[0, -1, col].detach().clone()
+
+            handles.append(down_proj.register_forward_pre_hook(_save_hook))
+        with torch.no_grad():
+            model(input_ids=input_ids, attention_mask=attention_mask)
+        for h in handles:
+            h.remove()
+
+    def _run_with_patch_hooks_random(stored, input_ids, attention_mask):
+        handles = []
+        for layer_idx, cols in random_by_layer.items():
+            down_proj = layer_stack[layer_idx].mlp.down_proj
+
+            def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
+                x = input[0]
+                out = x.clone()
+                for col in cols_list:
+                    if (layer, col) in stored:
+                        out[0, -1, col] = stored[(layer, col)].to(out.dtype).to(out.device)
+                return (out,)
+
+            handles.append(down_proj.register_forward_pre_hook(_patch_hook))
+        with torch.no_grad():
+            out = model(input_ids=input_ids, attention_mask=attention_mask)
+        for h in handles:
+            h.remove()
+        return out.logits[:, -1, :]
+
+    margin_shifts_random = []
+    correct_baseline_random = 0
+    correct_patched_random = 0
+
+    with torch.no_grad():
+        for i in range(n_samples):
+            pair = adv_pairs[i]
+            safe_input_ids = pair["safe_input_ids"].to(device)
+            safe_attention_mask = pair["safe_attention_mask"].to(device)
+
+            stored_random: Dict[Tuple[int, int], torch.Tensor] = {}
+            _run_with_save_hooks_random(stored_random, safe_input_ids, safe_attention_mask)
+
+            logits_baseline = _run_forward_no_hooks(model, pair["input_ids"], pair["attention_mask"])
+            baseline_margin, correct_base = _margin_and_correct(logits_baseline, pair)
+
+            logits_patched = _run_with_patch_hooks_random(stored_random, pair["input_ids"], pair["attention_mask"])
+            patched_margin, correct_patch = _margin_and_correct(logits_patched, pair)
+
+            margin_shifts_random.append(patched_margin - baseline_margin)
+            correct_baseline_random += correct_base
+            correct_patched_random += correct_patch
+
+    mean_margin_shift_random = float(np.mean(margin_shifts_random))
+    acc_baseline_random = correct_baseline_random / n_samples
+    acc_patched_random = correct_patched_random / n_samples
+    accuracy_change_random = acc_patched_random - acc_baseline_random
+
+    print("\n=== Random Neuron Patching ===")
+    print(f"Mean margin shift: {mean_margin_shift_random}")
+    print(f"Accuracy change: {accuracy_change_random}")
+
+
 def run_attention_head_ablation_sweep(
     model,
     tokenizer,
@@ -750,6 +965,31 @@ def main():
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
+        print("=== Running Anchor Activation Patching Experiment ===")
+        calibration_samples = load_mcq_dataset(n_total=120)
+        anchors = [
+            (16, 1761), (16, 2056), (16, 3433), (16, 3442), (16, 1471),
+            (16, 3647), (16, 7918), (16, 6047), (16, 4273), (16, 6845),
+            (8, 3977), (8, 2990), (8, 5386), (8, 3347), (8, 2069),
+            (8, 1577),
+        ]
+        run_anchor_activation_patching_experiment(
+            model=model,
+            tokenizer=tokenizer,
+            anchors=anchors,
+            calibration_samples=calibration_samples,
+            n_samples=40,
+        )
+        print("\n=== Per-Anchor Causal Strength ===")
+        for anchor in anchors:
+            run_anchor_activation_patching_experiment(
+                model=model,
+                tokenizer=tokenizer,
+                anchors=[anchor],
+                calibration_samples=calibration_samples,
+                n_samples=40,
+                per_anchor_report_only=True,
+            )
     else:
         # Sweep over multiple random seeds to test anchor stability.
         seeds = [1, 2, 3]
@@ -855,6 +1095,26 @@ def main():
 
         for (layer, column) in anchors:
             print(f"(layer={layer}, column={column})")
+
+        print("=== Running Anchor Activation Patching Experiment ===")
+        calibration_samples = load_mcq_dataset(n_total=120)
+        run_anchor_activation_patching_experiment(
+            model=model,
+            tokenizer=tokenizer,
+            anchors=anchors,
+            calibration_samples=calibration_samples,
+            n_samples=40,
+        )
+        print("\n=== Per-Anchor Causal Strength ===")
+        for anchor in anchors:
+            run_anchor_activation_patching_experiment(
+                model=model,
+                tokenizer=tokenizer,
+                anchors=[anchor],
+                calibration_samples=calibration_samples,
+                n_samples=40,
+                per_anchor_report_only=True,
+            )
 
         run_multi_anchor_ablation_sweep(
             model=model,
