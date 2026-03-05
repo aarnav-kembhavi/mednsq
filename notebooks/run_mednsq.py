@@ -622,7 +622,7 @@ def run_anchor_activation_patching_experiment(
     tokenizer,
     anchors: List[Tuple[int, int]],
     calibration_samples: List[Dict[str, Any]],
-    n_samples: int = 40,
+    n_samples: int = 120,
     per_anchor_report_only: bool = False,
 ) -> None:
     """Counterfactual activation patching on anchor neurons: patch safe-run activations
@@ -638,7 +638,9 @@ def run_anchor_activation_patching_experiment(
     if hasattr(backbone, "language_model"):
         backbone = backbone.language_model
     layer_stack = backbone.layers
+    # down_proj input h has shape [batch, seq, in_features]; EMS anchors are columns in in_features
     intermediate_size = layer_stack[0].mlp.down_proj.weight.shape[1]
+    pad_token_id = getattr(tokenizer, "pad_token_id", None) or getattr(tokenizer, "eos_token_id", 0)
 
     adv_pairs = build_adversarial_pairs(
         model, tokenizer, calibration_samples, n_calib=len(calibration_samples)
@@ -655,15 +657,27 @@ def run_anchor_activation_patching_experiment(
             anchors_by_layer[layer_idx] = []
         anchors_by_layer[layer_idx].append(col_idx)
 
+    def _left_pad_to_length(ids: torch.Tensor, mask: torch.Tensor, target_len: int):
+        """Left-pad so last position is the last real token; same length for alignment."""
+        seq_len = ids.shape[1]
+        if seq_len >= target_len:
+            return ids.to(device), mask.to(device)
+        batch = ids.shape[0]
+        new_ids = torch.full((batch, target_len), pad_token_id, dtype=ids.dtype, device=device)
+        new_mask = torch.zeros(batch, target_len, dtype=mask.dtype, device=device)
+        new_ids[:, -seq_len:] = ids.to(device)
+        new_mask[:, -seq_len:] = mask.to(device)
+        return new_ids, new_mask
+
     def _run_with_save_hooks(stored: Dict[Tuple[int, int], torch.Tensor], input_ids, attention_mask):
         handles = []
         for layer_idx, cols in anchors_by_layer.items():
             down_proj = layer_stack[layer_idx].mlp.down_proj
 
             def _save_hook(module, input, layer=layer_idx, cols_list=cols):
-                x = input[0]
+                h = input[0]
                 for col in cols_list:
-                    stored[(layer, col)] = x[0, -1, col].detach().clone()
+                    stored[(layer, col)] = h[0, -1, col].detach().clone()
 
             handles.append(down_proj.register_forward_pre_hook(_save_hook))
 
@@ -679,11 +693,12 @@ def run_anchor_activation_patching_experiment(
             down_proj = layer_stack[layer_idx].mlp.down_proj
 
             def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
-                x = input[0]
-                out = x.clone()
+                h = input[0]
+                out = h.clone()
                 for col in cols_list:
                     if (layer, col) in stored:
-                        out[0, -1, col] = stored[(layer, col)].to(out.dtype).to(out.device)
+                        stored_val = stored[(layer, col)].to(out.dtype).to(out.device)
+                        out[0, -1, col] = stored_val
                 return (out,)
 
             handles.append(down_proj.register_forward_pre_hook(_patch_hook))
@@ -712,16 +727,21 @@ def run_anchor_activation_patching_experiment(
     with torch.no_grad():
         for i in range(n_samples):
             pair = adv_pairs[i]
-            safe_input_ids = pair["safe_input_ids"].to(device)
-            safe_attention_mask = pair["safe_attention_mask"].to(device)
+            safe_ids = pair["safe_input_ids"].to(device)
+            safe_mask = pair["safe_attention_mask"].to(device)
+            corrupt_ids = pair["input_ids"].to(device)
+            corrupt_mask = pair["attention_mask"].to(device)
+            target_len = max(safe_ids.shape[1], corrupt_ids.shape[1])
+            safe_ids_pad, safe_mask_pad = _left_pad_to_length(safe_ids, safe_mask, target_len)
+            corrupt_ids_pad, corrupt_mask_pad = _left_pad_to_length(corrupt_ids, corrupt_mask, target_len)
 
             stored_activations: Dict[Tuple[int, int], torch.Tensor] = {}
-            _run_with_save_hooks(stored_activations, safe_input_ids, safe_attention_mask)
+            _run_with_save_hooks(stored_activations, safe_ids_pad, safe_mask_pad)
 
-            logits_baseline = _run_forward_no_hooks(model, pair["input_ids"], pair["attention_mask"])
+            logits_baseline = _run_forward_no_hooks(model, corrupt_ids_pad, corrupt_mask_pad)
             baseline_margin, correct_base = _margin_and_correct(logits_baseline, pair)
 
-            logits_patched = _run_with_patch_hooks(stored_activations, pair["input_ids"], pair["attention_mask"])
+            logits_patched = _run_with_patch_hooks(stored_activations, corrupt_ids_pad, corrupt_mask_pad)
             patched_margin, correct_patch = _margin_and_correct(logits_patched, pair)
 
             margin_shifts_anchor.append(patched_margin - baseline_margin)
@@ -762,9 +782,9 @@ def run_anchor_activation_patching_experiment(
             down_proj = layer_stack[layer_idx].mlp.down_proj
 
             def _save_hook(module, input, layer=layer_idx, cols_list=cols):
-                x = input[0]
+                h = input[0]
                 for col in cols_list:
-                    stored[(layer, col)] = x[0, -1, col].detach().clone()
+                    stored[(layer, col)] = h[0, -1, col].detach().clone()
 
             handles.append(down_proj.register_forward_pre_hook(_save_hook))
         with torch.no_grad():
@@ -778,11 +798,12 @@ def run_anchor_activation_patching_experiment(
             down_proj = layer_stack[layer_idx].mlp.down_proj
 
             def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
-                x = input[0]
-                out = x.clone()
+                h = input[0]
+                out = h.clone()
                 for col in cols_list:
                     if (layer, col) in stored:
-                        out[0, -1, col] = stored[(layer, col)].to(out.dtype).to(out.device)
+                        stored_val = stored[(layer, col)].to(out.dtype).to(out.device)
+                        out[0, -1, col] = stored_val
                 return (out,)
 
             handles.append(down_proj.register_forward_pre_hook(_patch_hook))
@@ -799,16 +820,21 @@ def run_anchor_activation_patching_experiment(
     with torch.no_grad():
         for i in range(n_samples):
             pair = adv_pairs[i]
-            safe_input_ids = pair["safe_input_ids"].to(device)
-            safe_attention_mask = pair["safe_attention_mask"].to(device)
+            safe_ids = pair["safe_input_ids"].to(device)
+            safe_mask = pair["safe_attention_mask"].to(device)
+            corrupt_ids = pair["input_ids"].to(device)
+            corrupt_mask = pair["attention_mask"].to(device)
+            target_len = max(safe_ids.shape[1], corrupt_ids.shape[1])
+            safe_ids_pad, safe_mask_pad = _left_pad_to_length(safe_ids, safe_mask, target_len)
+            corrupt_ids_pad, corrupt_mask_pad = _left_pad_to_length(corrupt_ids, corrupt_mask, target_len)
 
             stored_random: Dict[Tuple[int, int], torch.Tensor] = {}
-            _run_with_save_hooks_random(stored_random, safe_input_ids, safe_attention_mask)
+            _run_with_save_hooks_random(stored_random, safe_ids_pad, safe_mask_pad)
 
-            logits_baseline = _run_forward_no_hooks(model, pair["input_ids"], pair["attention_mask"])
+            logits_baseline = _run_forward_no_hooks(model, corrupt_ids_pad, corrupt_mask_pad)
             baseline_margin, correct_base = _margin_and_correct(logits_baseline, pair)
 
-            logits_patched = _run_with_patch_hooks_random(stored_random, pair["input_ids"], pair["attention_mask"])
+            logits_patched = _run_with_patch_hooks_random(stored_random, corrupt_ids_pad, corrupt_mask_pad)
             patched_margin, correct_patch = _margin_and_correct(logits_patched, pair)
 
             margin_shifts_random.append(patched_margin - baseline_margin)
@@ -978,7 +1004,7 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_samples=40,
+            n_samples=120,
         )
         print("\n=== Per-Anchor Causal Strength ===")
         for anchor in anchors:
@@ -987,7 +1013,7 @@ def main():
                 tokenizer=tokenizer,
                 anchors=[anchor],
                 calibration_samples=calibration_samples,
-                n_samples=40,
+                n_samples=120,
                 per_anchor_report_only=True,
             )
     else:
@@ -1103,7 +1129,7 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_samples=40,
+            n_samples=120,
         )
         print("\n=== Per-Anchor Causal Strength ===")
         for anchor in anchors:
@@ -1112,7 +1138,7 @@ def main():
                 tokenizer=tokenizer,
                 anchors=[anchor],
                 calibration_samples=calibration_samples,
-                n_samples=40,
+                n_samples=120,
                 per_anchor_report_only=True,
             )
 
@@ -1135,15 +1161,15 @@ def main():
             k_values=[1, 4, 8, 12, 16],
         )
 
-    run_attention_head_ablation_sweep(
-        model=model,
-        tokenizer=tokenizer,
-        layers=[8, 16],
-        seeds=[1, 2, 3, 4, 5],
-        calibration_size=cfg.calibration_size,
-        eval_size=60,
-        k_values=[1, 2, 4, 8],
-    )
+        run_attention_head_ablation_sweep(
+            model=model,
+            tokenizer=tokenizer,
+            layers=[8, 16],
+            seeds=[1, 2, 3, 4, 5],
+            calibration_size=cfg.calibration_size,
+            eval_size=60,
+            k_values=[1, 2, 4, 8],
+        )
 
 
 if __name__ == "__main__":
