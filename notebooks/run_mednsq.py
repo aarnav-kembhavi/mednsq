@@ -17,9 +17,9 @@ import json
 
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 20
+RANDOM_BASELINE_COLS = 80
 Z_THRESHOLD = 2.0
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 
 
 @dataclass
@@ -28,11 +28,11 @@ class EMSConfig:
 
     # Per the user-specified default experiment
     layer_idx: int = 2
-    calibration_size: int = 120
-    stage1_top_k: int = 40
-    stage1_samples: int = 20
-    stage2_top_k: int = 8
-    stage2_samples: int = 200
+    calibration_size: int = 400
+    stage1_top_k: int = 128
+    stage1_samples: int = 80
+    stage2_top_k: int = 64
+    stage2_samples: int = 400
 
 
 def _batched_margins_and_predictions(
@@ -166,7 +166,7 @@ def _evaluate_column_ems(
                     )
                     threshold = early_stop_mu
                     if early_stop_sigma is not None:
-                        threshold = early_stop_mu + 0.5 * early_stop_sigma
+                        threshold = early_stop_mu + 0.25 * early_stop_sigma
                     if mean_drop_so_far < threshold:
                         stop_early = True
                         break
@@ -453,7 +453,7 @@ def run_multi_anchor_ablation_sweep(
 
     print("\n=== Multi Anchor Ablation Sweep ===")
 
-    ablation_counts = [1, 4, 8, 12, 16]
+    ablation_counts = [1, 4, 8, 16, 32, 48, 64]
     # Store per-ablation metrics across seeds.
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in ablation_counts
@@ -1118,10 +1118,10 @@ def main():
     # Use device map auto-loading; seeds are handled per-run below.
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    RUN_HEAD_ONLY = True
+    RUN_HEAD_ONLY = False
 
     model_name = "google/medgemma-1.5-4b-it"
-    layers_to_test = [8, 16]
+    layers_to_test = list(range(6, 20))
 
     # Default experiment configuration (can be adjusted as needed).
     cfg = EMSConfig()
@@ -1175,13 +1175,14 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_prompts=48,
+            n_prompts=96,
             layer_range=(6, 21),
         )
     else:
         # Sweep over multiple random seeds to test anchor stability.
         seeds = [1, 2, 3]
         all_seed_results: List[Dict[str, Any]] = []
+        calibration_reference: List[Dict[str, Any]] = []
 
         for seed in seeds:
             print(f"\n===== RUNNING SEED {seed} =====")
@@ -1205,6 +1206,8 @@ def main():
             random.shuffle(samples)
             calibration = samples[: cfg.calibration_size]
             evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
+            if seed == seeds[0]:
+                calibration_reference = calibration
 
             adv_pairs = build_adversarial_pairs(
                 model, tokenizer, calibration, n_calib=len(calibration)
@@ -1272,20 +1275,29 @@ def main():
         with open(f"ems_seed_sweep_{timestamp}.json", "w") as f:
             json.dump(all_seed_results, f, indent=2)
 
-        print("\n=== Using Manually Selected Anchors For Ablation ===")
+        # Gather anchors from EMS discovery across all seeds; dedupe and keep top 64 by mean_drop.
+        anchor_to_stats: Dict[Tuple[int, int], Dict[str, float]] = {}
+        for seed_result in all_seed_results:
+            for layer_summary in seed_result["layers"]:
+                for a in layer_summary["validated_anchors"]:
+                    key = (a["layer"], a["column"])
+                    current_drop = anchor_to_stats.get(key, {}).get("drop", 0.0)
+                    if a["mean_drop"] > current_drop:
+                        anchor_to_stats[key] = {
+                            "drop": a["mean_drop"],
+                            "z": a["z_score"],
+                        }
+        sorted_anchor_stats = sorted(
+            anchor_to_stats.items(), key=lambda x: x[1]["drop"], reverse=True
+        )[:64]
+        anchors = [k for k, _ in sorted_anchor_stats]
 
-        anchors = [
-            (16, 1761), (16, 2056), (16, 3433), (16, 3442), (16, 1471),
-            (16, 3647), (16, 7918), (16, 6047), (16, 4273), (16, 6845),
-            (8, 3977), (8, 2990), (8, 5386), (8, 3347), (8, 2069),
-            (8, 1577),
-        ]
+        print("\n=== Discovered Anchors ===")
+        for (layer, column), stats in sorted_anchor_stats:
+            print(f"(layer={layer}, col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
 
-        for (layer, column) in anchors:
-            print(f"(layer={layer}, column={column})")
-
-        print("=== Running Anchor Activation Patching Experiment ===")
-        calibration_samples = load_mcq_dataset(n_total=120)
+        print("\n=== Running Anchor Activation Patching Experiment ===")
+        calibration_samples = calibration_reference[:120]
         run_anchor_activation_patching_experiment(
             model=model,
             tokenizer=tokenizer,
@@ -1310,7 +1322,7 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_prompts=48,
+            n_prompts=96,
             layer_range=(6, 21),
         )
 
@@ -1323,14 +1335,15 @@ def main():
             eval_size=60,
         )
 
+        anchor_layers = sorted(list(set(layer for layer, _ in anchors)))
         run_random_neuron_ablation_baseline(
             model=model,
             tokenizer=tokenizer,
-            layers=[2, 8, 16, 24],
+            layers=anchor_layers,
             seeds=[1, 2, 3, 4, 5],
             calibration_size=cfg.calibration_size,
             eval_size=60,
-            k_values=[1, 4, 8, 12, 16],
+            k_values=[1, 4, 8, 16, 32, 48, 64],
         )
 
         run_attention_head_ablation_sweep(
