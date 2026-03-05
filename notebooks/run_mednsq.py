@@ -716,32 +716,18 @@ def main():
     with open(f"ems_seed_sweep_{timestamp}.json", "w") as f:
         json.dump(all_seed_results, f, indent=2)
 
-    # Anchor frequency: (layer, column) -> count across seeds.
-    anchor_freq: Dict[Tuple[int, int], int] = {}
-    num_seeds = len(all_seed_results)
-    for seed_result in all_seed_results:
-        for layer_summary in seed_result["layers"]:
-            for anchor in layer_summary["validated_anchors"]:
-                key = (anchor["layer"], anchor["column"])
-                anchor_freq[key] = anchor_freq.get(key, 0) + 1
-    print("\n=== Anchor Frequency ===")
-    for (layer, column), count in sorted(
-        anchor_freq.items(), key=lambda x: (-x[1], x[0][0], x[0][1])
-    ):
-        print(f"(layer={layer}, column={column}) appeared in {count}/{num_seeds} seeds")
+    print("\n=== Using Manually Selected Anchors For Ablation ===")
 
-    # Select anchors by majority rule: appeared in more than half of seeds.
-    min_count = len(seeds) // 2 + 1
     anchors = [
-        (layer, column)
-        for (layer, column), count in anchor_freq.items()
-        if count >= min_count
+        (16, 1761),
+        (16, 2056),
+        (16, 3433),
+        (8, 3977),
+        (8, 3347),
     ]
-    anchors = sorted(anchors, key=lambda x: anchor_freq[x], reverse=True)
 
-    print("\n=== Anchors Selected For Ablation ===")
     for (layer, column) in anchors:
-        print(f"(layer={layer}, column={column}) freq={anchor_freq[(layer, column)]}")
+        print(f"(layer={layer}, column={column})")
 
     run_multi_anchor_ablation_sweep(
         model=model,
