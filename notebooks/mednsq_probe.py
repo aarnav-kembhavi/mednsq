@@ -9,17 +9,7 @@ class MedNSQProbe:
         self.model = model
 
     def get_layer_weight(self, layer_idx: int) -> torch.Tensor:
-        backbone = getattr(self.model, "model", self.model)
-
-        if hasattr(backbone, "layers"):
-            layer_stack = backbone.layers
-        elif hasattr(backbone, "language_model") and hasattr(
-            backbone.language_model, "layers"
-        ):
-            layer_stack = backbone.language_model.layers
-        else:
-            raise AttributeError("Cannot locate transformer layers.")
-
+        layer_stack = self.model.model.layers
         return layer_stack[layer_idx].mlp.down_proj.weight
 
     def _final_token_logits(self, input_ids, attention_mask):

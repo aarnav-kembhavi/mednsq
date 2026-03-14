@@ -34,9 +34,10 @@ class Tee:
 
 sys.stdout = Tee("experiment_full_output.log")
 
+print("DEBUG MODE ENABLED — SMOKE TEST")
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 128
+RANDOM_BASELINE_COLS = 4
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 64
 
@@ -520,7 +521,7 @@ def run_multi_anchor_ablation_sweep(
 
     print("\n=== Multi Anchor Ablation Sweep ===")
 
-    ablation_counts = [1, 4, 8, 16, 32, 48, 64]
+    ablation_counts = [1, 2]
     # Store per-ablation metrics across seeds.
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in ablation_counts
@@ -1189,10 +1190,16 @@ def main():
     RUN_HEAD_ONLY = False
 
     model_name = "BioMistral/BioMistral-7B"
-    layers_to_test = list(range(10, 26))
+    layers_to_test = [10]
 
-    # Default experiment configuration (can be adjusted as needed).
-    cfg = EMSConfig()
+    # Debug: minimal EMS configuration for smoke test.
+    cfg = EMSConfig(
+        calibration_size=8,
+        stage1_top_k=4,
+        stage1_samples=4,
+        stage2_top_k=2,
+        stage2_samples=6,
+    )
 
     print("=== Experiment Configuration ===")
     print("Calibration size:", cfg.calibration_size)
@@ -1237,7 +1244,7 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_samples=120,
+            n_samples=6,
         )
         print("\n=== Per-Anchor Causal Strength ===")
         for anchor in anchors:
@@ -1246,7 +1253,7 @@ def main():
                 tokenizer=tokenizer,
                 anchors=[anchor],
                 calibration_samples=calibration_samples,
-                n_samples=120,
+                n_samples=6,
                 per_anchor_report_only=True,
             )
         print("\n=== Head-to-Anchor Attribution ===")
@@ -1255,12 +1262,12 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_prompts=96,
+            n_prompts=8,
             layer_range=(6, 21),
         )
     else:
         # Sweep over multiple random seeds to test anchor stability.
-        seeds = [1, 2, 3]
+        seeds = [1]
         checkpoint = load_checkpoint()
         if checkpoint:
             completed_seeds = list(checkpoint["completed_seeds"])
@@ -1474,7 +1481,7 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_samples=120,
+            n_samples=6,
         )
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1486,7 +1493,7 @@ def main():
                 tokenizer=tokenizer,
                 anchors=[anchor],
                 calibration_samples=calibration_samples,
-                n_samples=120,
+                n_samples=6,
                 per_anchor_report_only=True,
             )
 
@@ -1496,7 +1503,7 @@ def main():
             tokenizer=tokenizer,
             anchors=anchors,
             calibration_samples=calibration_samples,
-            n_prompts=96,
+            n_prompts=8,
             layer_range=(6, 21),
         )
         if torch.cuda.is_available():
@@ -1523,7 +1530,7 @@ def main():
             seeds=[1, 2, 3, 4, 5],
             calibration_size=cfg.calibration_size,
             eval_size=60,
-            k_values=[1, 4, 8, 16, 32, 48, 64],
+            k_values=[1, 2],
         )
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1536,7 +1543,7 @@ def main():
             seeds=[1, 2, 3, 4, 5],
             calibration_size=cfg.calibration_size,
             eval_size=60,
-            k_values=[1, 2, 4, 8],
+            k_values=[1],
         )
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1554,6 +1561,8 @@ def main():
         }
         with open("final_experiment_summary.json", "w") as f:
             json.dump(final_summary, f, indent=2)
+
+        print("DEBUG RUN COMPLETE — PIPELINE VERIFIED")
 
 
 if __name__ == "__main__":
