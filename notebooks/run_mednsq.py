@@ -1,7 +1,6 @@
 import math
 import os
 import random
-import sys
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
@@ -14,39 +13,16 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from mednsq_data import load_mcq_dataset, build_adversarial_pairs, format_prompt
 from mednsq_eval import evaluate_model, _get_letter_token_ids
-from mednsq_probe import MedNSQProbe
+from mednsq_probe import MedNSQProbe, _get_layers, _get_mlp_down_proj
 import json
-
-
-class Tee:
-    def __init__(self, filename):
-        self.file = open(filename, "a", buffering=1)
-        self.stdout = sys.stdout
-
-    def write(self, data):
-        self.stdout.write(data)
-        self.file.write(data)
-
-    def flush(self):
-        self.stdout.flush()
-        self.file.flush()
-
-
-sys.stdout = Tee("experiment_full_output_llama3_3b.log")
 
 
 # EMS configuration constants (defaults for next runs)
 RANDOM_BASELINE_COLS = 128
 Z_THRESHOLD = 2.0
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
 
-# Architecture parameters (set dynamically after each model load)
-HIDDEN_SIZE = None
-NUM_LAYERS = None
-NUM_ATTENTION_HEADS = None
-INTERMEDIATE_SIZE = None
-HEAD_DIM = None
 
 @dataclass
 class EMSConfig:
@@ -68,7 +44,7 @@ def log_progress(text: str) -> None:
 
 
 def append_anchor_progress(layer: int, col: int, drop: float, z: float) -> None:
-    """Append one anchor line to anchors_progress.txt."""
+    """Append one anchor line to anchors_progress.."""
     with open("anchors_progress.txt", "a") as f:
         f.write(f"(layer={layer} col={col}) drop={drop:.2f} Z={z:.1f}\n")
 
@@ -88,19 +64,12 @@ def load_checkpoint() -> Any:
     return None
 
 
-def print_gpu_memory():
-    """Debug: print current GPU memory allocated and reserved (non-intrusive)."""
-    if torch.cuda.is_available():
-        alloc = torch.cuda.memory_allocated() / 1e9
-        reserved = torch.cuda.memory_reserved() / 1e9
-        print(f"[GPU] allocated={alloc:.2f}GB reserved={reserved:.2f}GB")
-
-
 def _batched_margins_and_predictions(
     model,
     adv_pairs: List[Dict[str, Any]],
     letter_token_ids: torch.Tensor,
     batch_size: int = BATCH_SIZE,
+    pad_token_id: int = 0,
 ) -> Tuple[torch.Tensor, List[int]]:
     """Compute per-sample margins and A/B/C/D predictions in mini-batches.
 
@@ -128,7 +97,7 @@ def _batched_margins_and_predictions(
             mask = pair["attention_mask"].to(device)
             pad_len = max_len - ids.shape[1]
             if pad_len > 0:
-                ids = F.pad(ids, (0, pad_len), value=0)
+                ids = F.pad(ids, (0, pad_len), value=pad_token_id)
                 mask = F.pad(mask, (0, pad_len), value=0)
             input_batch.append(ids)
             mask_batch.append(mask)
@@ -157,109 +126,146 @@ def _batched_margins_and_predictions(
     return torch.tensor(margins, dtype=torch.float32), preds
 
 
-def _evaluate_columns_vectorized(
-    model,
-    layer,
-    columns,
-    adv_pairs,
-    baseline_margins,
-    letter_token_ids,
-    batch_size=BATCH_SIZE,
-):
-    device = next(model.parameters()).device
-
-    down_proj = layer.mlp.down_proj
-    W_down = down_proj.weight
-
-    num_cols = len(columns)
-
-    drop_sums = torch.zeros(num_cols, device=device)
-    counts = torch.zeros(num_cols, device=device)
-
-    for start in range(0, len(adv_pairs), batch_size):
-
-        batch = adv_pairs[start:start+batch_size]
-
-        seq_lens = [p["input_ids"].shape[1] for p in batch]
-        max_len = max(seq_lens)
-
-        input_batch = []
-        mask_batch = []
-
-        for pair in batch:
-            ids = pair["input_ids"].to(device)
-            mask = pair["attention_mask"].to(device)
-
-            pad_len = max_len - ids.shape[1]
-
-            if pad_len > 0:
-                ids = F.pad(ids, (0, pad_len), value=0)
-                mask = F.pad(mask, (0, pad_len), value=0)
-
-            input_batch.append(ids)
-            mask_batch.append(mask)
-
-        input_ids = torch.cat(input_batch, dim=0)
-        attention_mask = torch.cat(mask_batch, dim=0)
-
-        activations = {}
-
-        def capture_hook(module, input):
-            h = input[0]
-            activations["h"] = h[:, -1, :].detach()
-
-        handle = down_proj.register_forward_pre_hook(capture_hook)
-
-        with torch.no_grad():
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-
-        handle.remove()
-
-        logits = outputs.logits[:, -1, :]
-        h = activations["h"]
-
-        pos_ids = torch.tensor([p["pos_id"] for p in batch], device=device)
-        neg_ids = torch.tensor([p["neg_id"] for p in batch], device=device)
-
-        baseline = baseline_margins[start:start+len(batch)].to(device)
-
-        for i, col in enumerate(columns):
-
-            contrib = h[:, col].unsqueeze(-1) * W_down[:, col]
-
-            new_logits = logits - contrib
-
-            pos_logits = new_logits.gather(1, pos_ids.unsqueeze(1)).squeeze()
-            neg_logits = new_logits.gather(1, neg_ids.unsqueeze(1)).squeeze()
-
-            margins = pos_logits - neg_logits
-
-            drops = baseline - margins
-
-            drop_sums[i] += drops.sum()
-            counts[i] += len(batch)
-
-    mean_drops = (drop_sums / counts).tolist()
-
-    return mean_drops
-
 def _evaluate_column_ems(
     model,
-    probe,
-    layer_idx,
-    col,
-    adv_pairs,
-    baseline_margins,
-    letter_token_ids,
-    early_stop_mu,
-    early_stop_sigma,
-    max_samples,
-    track_flips=False,
-):
-    """Evaluate a single column for EMS."""
-    # This is a placeholder - you need to implement this based on your needs
-    # For now, returning dummy values
-    return None, 0.0, 0.0, 0.0
+    probe: MedNSQProbe,
+    layer_idx: int,
+    col_idx: int,
+    adv_pairs: List[Dict[str, Any]],
+    baseline_margins: torch.Tensor,
+    letter_token_ids: torch.Tensor,
+    early_stop_mu: float | None = None,
+    early_stop_sigma: float | None = None,
+    max_samples: int | None = None,
+    track_flips: bool = False,
+    pad_token_id: int = 0,
+) -> Tuple[torch.Tensor, float, float, float]:
+    """Evaluate EMS statistics for a single column.
+
+    Returns:
+        drops: tensor of per-sample margin drops (baseline - crushed)
+        mean_drop: mean(drops)
+        flip_rate: fraction of samples where prediction != correct (if tracked)
+        lethal_flip_rate: fraction where prediction == neg target (if tracked)
+    """
+    if not adv_pairs:
+        return torch.zeros(0, dtype=torch.float32), 0.0, 0.0, 0.0
+
+    if max_samples is not None:
+        adv_pairs = adv_pairs[:max_samples]
+        baseline_margins = baseline_margins[:max_samples]
+
+    # Crush a single column and keep a copy of its original weights.
+    original_col = probe.simulate_column_crush(layer_idx, col_idx)
+
+    crushed_margins: List[float] = []
+    preds: List[int] = []
+    processed = 0
+    stop_early = False
+
+    try:
+        device = next(model.parameters()).device
+        letter_token_ids = letter_token_ids.to(device)
+
+        for start in range(0, len(adv_pairs), BATCH_SIZE):
+            batch = adv_pairs[start : start + BATCH_SIZE]
+            batch_baseline = baseline_margins[processed : processed + len(batch)]
+
+            margins_batch, preds_batch = _batched_margins_and_predictions(
+                model, batch, letter_token_ids, batch_size=BATCH_SIZE, pad_token_id=pad_token_id
+            )
+
+            for j, margin in enumerate(margins_batch.tolist()):
+                crushed_margins.append(margin)
+                if track_flips:
+                    preds.append(preds_batch[j])
+
+                processed += 1
+
+                # Early stopping during Stage 1 EMS.
+                if (
+                    early_stop_mu is not None
+                    and processed % 10 == 0
+                    and processed <= len(baseline_margins)
+                ):
+                    base_so_far = baseline_margins[:processed]
+                    crushed_so_far = torch.tensor(
+                        crushed_margins[:processed], dtype=torch.float32
+                    )
+                    mean_drop_so_far = float(
+                        (base_so_far - crushed_so_far).mean().item()
+                    )
+                    threshold = early_stop_mu
+                    if early_stop_sigma is not None:
+                        threshold = early_stop_mu + 0.25 * early_stop_sigma
+                    if mean_drop_so_far < threshold:
+                        stop_early = True
+                        break
+
+            if stop_early:
+                break
+
+    finally:
+        # Restore the crushed column and sanity-check restoration.
+        probe.restore_column(layer_idx, col_idx, original_col)
+        restored_col = probe.get_layer_weight(layer_idx)[:, col_idx].detach().to(
+            original_col.dtype
+        )
+        max_diff = (restored_col - original_col).abs().max().item()
+        if max_diff > 1e-3:
+            print(
+                f"[Warning] Column restoration check failed for "
+                f"layer={layer_idx}, column={col_idx}, max_diff={max_diff:.6e}"
+            )
+
+    if not crushed_margins:
+        return torch.zeros(0, dtype=torch.float32), 0.0, 0.0, 0.0
+
+    crushed_tensor = torch.tensor(crushed_margins, dtype=torch.float32)
+    drops = baseline_margins[: len(crushed_tensor)] - crushed_tensor
+    mean_drop = float(drops.mean().item())
+
+    flip_rate = 0.0
+    lethal_flip_rate = 0.0
+
+    if track_flips and preds:
+        # Flip tracking is computed per column with fresh counters.
+        total = len(preds)
+        flips = 0
+        lethal_flips = 0
+
+        # We compare predictions against the positive / negative tokens.
+        # This matches the desired per-sample EMS flip semantics.
+        letter_token_ids_cpu = letter_token_ids.detach().cpu()
+
+        debug_limit = 0  # Disable per-sample debug printing.
+        printed_debug = 0
+
+        for i, pred_idx in enumerate(preds):
+            pair = adv_pairs[i]
+            correct_token = int(pair["pos_id"])
+            neg_token = int(pair["neg_id"])
+            pred_token = int(letter_token_ids_cpu[pred_idx].item())
+
+            if pred_token != correct_token:
+                flips += 1
+                if pred_token == neg_token:
+                    lethal_flips += 1
+
+            # Optional lightweight debug trace for the first few samples.
+            if printed_debug < debug_limit:
+                print(
+                    f"[FlipDebug] layer={layer_idx} column={col_idx} "
+                    f"sample={i} pred_token={pred_token} "
+                    f"correct_token={correct_token} neg_token={neg_token}"
+                )
+                printed_debug += 1
+
+        flip_rate = flips / total if total > 0 else 0.0
+        lethal_flip_rate = lethal_flips / total if total > 0 else 0.0
+
+    return drops, mean_drop, flip_rate, lethal_flip_rate
+
 
 def _run_ems_for_layer(
     model,
@@ -294,22 +300,30 @@ def _run_ems_for_layer(
 
     # Letter token ids for A/B/C/D predictions.
     letter_token_ids = _get_letter_token_ids(tokenizer)
+    pad_token_id = getattr(tokenizer, "pad_token_id", None)
+    if pad_token_id is None:
+        pad_token_id = getattr(tokenizer, "eos_token_id", 0)
 
     # Random baseline columns for Z-score calibration.
     all_indices = torch.arange(num_cols, device=jacobian_scores.device)
     rand_cols = all_indices[torch.randperm(num_cols)[:RANDOM_BASELINE_COLS]].tolist()
 
-    backbone = getattr(probe.model, "model", probe.model)
-    layer = backbone.layers[layer_idx]
-
-    random_mean_drops = _evaluate_columns_vectorized(
-        model,
-        layer,
-        rand_cols,
-        adv_pairs[:stage1_samples],
-        baseline_stage1,
-        letter_token_ids,
-    )
+    random_mean_drops: List[float] = []
+    for col in rand_cols:
+        drops, mean_drop, _, _ = _evaluate_column_ems(
+            model,
+            probe,
+            layer_idx,
+            int(col),
+            adv_pairs[:stage1_samples],
+            baseline_stage1,
+            letter_token_ids,
+            early_stop_mu=None,
+            max_samples=stage1_samples,
+            track_flips=False,
+            pad_token_id=pad_token_id,
+        )
+        random_mean_drops.append(mean_drop)
 
     if random_mean_drops:
         rand_tensor = torch.tensor(random_mean_drops, dtype=torch.float32)
@@ -329,23 +343,23 @@ def _run_ems_for_layer(
 
     # Stage 1 EMS on top-k columns with early stopping.
     stage1_candidates: List[Tuple[int, float]] = []
-
-    candidate_cols = top_indices.tolist()
-
-    mean_drops = _evaluate_columns_vectorized(
-        model,
-        layer,
-        candidate_cols,
-        adv_pairs[:stage1_samples],
-        baseline_stage1,
-        letter_token_ids,
-    )
-
-    stage1_candidates = [
-       (col, drop)
-       for col, drop in zip(candidate_cols, mean_drops)
-       if drop > 0
-]
+    for col in top_indices.tolist():
+        drops, mean_drop, _, _ = _evaluate_column_ems(
+            model,
+            probe,
+            layer_idx,
+            int(col),
+            adv_pairs[:stage1_samples],
+            baseline_stage1,
+            letter_token_ids,
+            early_stop_mu=mu_rand,
+            early_stop_sigma=sigma_rand,
+            max_samples=stage1_samples,
+            track_flips=False,
+            pad_token_id=pad_token_id,
+        )
+        if mean_drop > 0.0:
+            stage1_candidates.append((int(col), mean_drop))
 
     # Keep top-k Stage 2 candidates by mean drop (positive = safety-relevant).
     stage1_candidates.sort(key=lambda x: x[1], reverse=True)
@@ -363,45 +377,44 @@ def _run_ems_for_layer(
     adv_pairs_stage2 = adv_pairs[:stage2_samples]
     baseline_stage2 = baseline_margins_all[:stage2_samples]
 
-    backbone = getattr(probe.model, "model", probe.model)
-    layer = backbone.layers[layer_idx]
-
-    mean_drops = _evaluate_columns_vectorized(
-        model,
-        layer,
-        stage2_columns,
-        adv_pairs_stage2,
-        baseline_stage2,
-        letter_token_ids,
-    )
-
-    for col, mean_drop in zip(stage2_columns, mean_drops):
+    for col in stage2_columns:
+        drops, mean_drop, flip_rate, lethal_flip_rate = _evaluate_column_ems(
+            model,
+            probe,
+            layer_idx,
+            int(col),
+            adv_pairs_stage2,
+            baseline_stage2,
+            letter_token_ids,
+            early_stop_mu=None,
+            max_samples=stage2_samples,
+            track_flips=True,
+            pad_token_id=pad_token_id,
+        )
 
         z = (mean_drop - mu_rand) / (sigma_rand + 1e-8)
+        median_drop = float(torch.median(drops).item())
 
         result = {
             "layer": layer_idx,
             "column": int(col),
             "mean_drop": mean_drop,
-            "median_drop": float(mean_drop),
+            "median_drop": median_drop,
             "z_score": z,
-            "flip_rate": 0.0,
-            "lethal_flip_rate": 0.0,
+            "flip_rate": flip_rate,
+            "lethal_flip_rate": lethal_flip_rate,
         }
-
         stage2_results.append(result)
 
         print(
             "[Stage2] "
             f"layer={layer_idx} column={col} "
-            f"drop={mean_drop:.6f} Z={z:.3f}"
+            f"drop={mean_drop:.6f} median_drop={median_drop:.6f} Z={z:.3f} "
+            f"flip={flip_rate:.4f} lethal={lethal_flip_rate:.4f}"
         )
 
         if z > Z_THRESHOLD:
             validated_anchors.append(result)
-
-    with open(f"layer_{layer_idx}_stage2_results.json", "w") as f:
-        json.dump(stage2_results, f, indent=2)
 
     # Sanity checks over Stage 2 flip statistics.
     if stage2_results:
@@ -553,9 +566,6 @@ def run_multi_anchor_ablation_sweep(
         print(f"Mean margin: {mean_margin}")
         log_progress(f"Multi-anchor ablation count={count} mean_accuracy={mean_acc} mean_margin={mean_margin}")
 
-    with open("multi_anchor_ablation_results.json", "w") as f:
-        json.dump(sweep_results, f, indent=2)
-
 
 def run_random_neuron_ablation_baseline(
     model,
@@ -640,9 +650,6 @@ def run_random_neuron_ablation_baseline(
         print(f"Mean margin: {mean_margin}")
         log_progress(f"Random neuron ablation k={k} mean_accuracy={mean_acc} mean_margin={mean_margin}")
 
-    with open("random_neuron_ablation_results.json", "w") as f:
-        json.dump(sweep_results, f, indent=2)
-
 
 def _run_forward_no_hooks(model, input_ids, attention_mask):
     """Single forward pass with no hooks; returns logits at last position."""
@@ -668,11 +675,9 @@ def run_anchor_activation_patching_experiment(
     device = next(model.parameters()).device
     letter_token_ids = _get_letter_token_ids(tokenizer).to(device)
 
-    # Mistral: model.model.layers (no language_model wrapper)
-    backbone = getattr(model, "model", model)
-    layer_stack = backbone.layers
-    # down_proj input h has shape [batch, seq, intermediate_size]; EMS anchors are columns
-    intermediate_size = INTERMEDIATE_SIZE
+    probe = MedNSQProbe(model)
+    layer_stack = probe.layers
+    intermediate_size = probe.intermediate_size
     pad_token_id = getattr(tokenizer, "pad_token_id", None) or getattr(tokenizer, "eos_token_id", 0)
 
     adv_pairs = build_adversarial_pairs(
@@ -705,7 +710,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_save_hooks(stored: Dict[Tuple[int, int], torch.Tensor], input_ids, attention_mask):
         handles = []
         for layer_idx, cols in anchors_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _save_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -723,7 +728,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_patch_hooks(stored: Dict[Tuple[int, int], torch.Tensor], input_ids, attention_mask):
         handles = []
         for layer_idx, cols in anchors_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -812,7 +817,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_save_hooks_random(stored, input_ids, attention_mask):
         handles = []
         for layer_idx, cols in random_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _save_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -828,7 +833,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_patch_hooks_random(stored, input_ids, attention_mask):
         handles = []
         for layer_idx, cols in random_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -897,12 +902,10 @@ def run_attention_head_ablation_sweep(
 
     print("\n=== Attention Head Ablation Sweep ===")
 
-    # Mistral: model.model.layers; use hardcoded BioMistral architecture constants
-    backbone = getattr(model, "model", model)
-    layer_stack = backbone.layers
-
-    num_heads = NUM_ATTENTION_HEADS
-    head_dim = HEAD_DIM
+    probe = MedNSQProbe(model)
+    layer_stack = probe.layers
+    num_heads = probe.num_heads
+    head_dim = probe.head_dim
 
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in k_values
@@ -923,8 +926,6 @@ def run_attention_head_ablation_sweep(
         adv_pairs = build_adversarial_pairs(
             model, tokenizer, calibration, n_calib=len(calibration)
         )
-
-        probe = MedNSQProbe(model)
 
         all_heads = [
             (layer, head) for layer in layers for head in range(num_heads)
@@ -971,10 +972,10 @@ def run_attention_head_ablation_sweep(
                             weight.dtype
                         ).to(weight.device)
 
-        del probe
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
+    del probe
     for k in k_values:
         accs = sweep_results[k]["accuracies"]
         margins = sweep_results[k]["margins"]
@@ -986,9 +987,6 @@ def run_attention_head_ablation_sweep(
         print(f"Mean accuracy: {mean_acc}")
         print(f"Mean margin: {mean_margin}")
         log_progress(f"Attention head ablation k={k} mean_accuracy={mean_acc} mean_margin={mean_margin}")
-
-    with open("attention_head_ablation_results.json", "w") as f:
-        json.dump(sweep_results, f, indent=2)
 
 
 def run_head_to_anchor_attribution(
@@ -1009,12 +1007,10 @@ def run_head_to_anchor_attribution(
     device = next(model.parameters()).device
     pad_token_id = getattr(tokenizer, "pad_token_id", None) or getattr(tokenizer, "eos_token_id", 0)
 
-    # Mistral: model.model.layers; use hardcoded BioMistral architecture constants
-    backbone = getattr(model, "model", model)
-    layer_stack = backbone.layers
-
-    num_heads = NUM_ATTENTION_HEADS
-    head_dim = HEAD_DIM
+    probe = MedNSQProbe(model)
+    layer_stack = probe.layers
+    num_heads = probe.num_heads
+    head_dim = probe.head_dim
 
     anchors_by_layer: Dict[int, List[int]] = {}
     for (layer_idx, col_idx) in anchors:
@@ -1070,7 +1066,7 @@ def run_head_to_anchor_attribution(
     ) -> None:
         handles = []
         for layer_idx, cols in anchors_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def capture_hook(module, input, layer=layer_idx, anchor_cols=cols):
                 h = input[0]
@@ -1093,11 +1089,7 @@ def run_head_to_anchor_attribution(
 
     baseline_anchor_activation: Dict[Tuple[int, int], float] = {}
     for (layer_idx, col_idx) in anchors:
-        vals = stored_baseline[(layer_idx, col_idx)]
-        if len(vals) == 0:
-            continue
-
-        stacked = torch.cat(vals, dim=0)
+        stacked = torch.cat(stored_baseline[(layer_idx, col_idx)], dim=0)
         baseline_anchor_activation[(layer_idx, col_idx)] = stacked.mean().item()
 
     results: List[Dict[str, Any]] = []
@@ -1119,18 +1111,9 @@ def run_head_to_anchor_attribution(
                 _run_and_capture_anchors(stored_after)
 
                 for (anchor_layer, anchor_column) in anchors:
-                    vals = stored_after[(anchor_layer, anchor_column)]
-
-                    if len(vals) == 0:
-                        continue
-
-                    stacked = torch.cat(vals, dim=0)
+                    stacked = torch.cat(stored_after[(anchor_layer, anchor_column)], dim=0)
                     activation_after_mean = stacked.mean().item()
-
-                    delta = abs(
-                        activation_after_mean
-                        - baseline_anchor_activation[(anchor_layer, anchor_column)]
-                    )
+                    delta = abs(activation_after_mean - baseline_anchor_activation[(anchor_layer, anchor_column)])
 
                     results.append({
                         "head_layer": layer_idx,
@@ -1160,8 +1143,12 @@ def main():
 
     RUN_HEAD_ONLY = False
 
-    model_name = "meta-llama/Llama-3.2-3B-Instruct"
-    layers_to_test = list(range(6, 22))
+    model_name = "microsoft/Phi-3-mini-128k-instruct"
+    layers_to_test = [
+        8, 9, 10, 11, 12,
+        13, 14, 15, 16, 17,
+        18, 19, 20, 21, 22,
+    ]
 
     # Default experiment configuration (can be adjusted as needed).
     cfg = EMSConfig()
@@ -1175,8 +1162,8 @@ def main():
     print("Random baseline cols:", RANDOM_BASELINE_COLS)
     print("===============================")
 
-    # Load tokenizer once (use_fast=False for Mistral compatibility).
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+    # Load tokenizer once.
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -1191,18 +1178,15 @@ def main():
             model_name,
             torch_dtype=torch.bfloat16,
             device_map="auto",
+            trust_remote_code=True,
         )
-        # Dynamically set architecture parameters from model.config
-        config = model.config
-        HIDDEN_SIZE = config.hidden_size
-        NUM_LAYERS = config.num_hidden_layers
-        NUM_ATTENTION_HEADS = config.num_attention_heads
-        INTERMEDIATE_SIZE = config.intermediate_size
-        HEAD_DIM = HIDDEN_SIZE // NUM_ATTENTION_HEADS
+        layers = getattr(getattr(model, "model", model), "layers", None)
+        assert layers is not None, "Cannot find transformer layers"
+        test_weight = _get_mlp_down_proj(layers[0]).weight
+        print("Sanity check weight shape:", test_weight.shape)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
-        print_gpu_memory()
         print("=== Running Anchor Activation Patching Experiment ===")
         calibration_samples = load_mcq_dataset(n_total=120)
         anchors = [
@@ -1268,18 +1252,15 @@ def main():
                 model_name,
                 torch_dtype=torch.bfloat16,
                 device_map="auto",
+                trust_remote_code=True,
             )
-            # Dynamically set architecture parameters from model.config
-            config = model.config
-            HIDDEN_SIZE = config.hidden_size
-            NUM_LAYERS = config.num_hidden_layers
-            NUM_ATTENTION_HEADS = config.num_attention_heads
-            INTERMEDIATE_SIZE = config.intermediate_size
-            HEAD_DIM = HIDDEN_SIZE // NUM_ATTENTION_HEADS
+            layers = getattr(getattr(model, "model", model), "layers", None)
+            assert layers is not None, "Cannot find transformer layers"
+            test_weight = _get_mlp_down_proj(layers[0]).weight
+            print("Sanity check weight shape:", test_weight.shape)
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
             torch.set_float32_matmul_precision("high")
-            print_gpu_memory()
 
             # Dataset split: configurable calibration size, fixed held-out evaluation size.
             eval_size = 60
@@ -1288,35 +1269,22 @@ def main():
             random.shuffle(samples)
             calibration = samples[: cfg.calibration_size]
             evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
-            with open("calibration_prompts.json", "w") as f:
-                json.dump(calibration, f, indent=2)
-            with open("evaluation_prompts.json", "w") as f:
-                json.dump(evaluation, f, indent=2)
             if seed == seeds[0]:
                 calibration_reference = calibration
 
             adv_pairs = build_adversarial_pairs(
                 model, tokenizer, calibration, n_calib=len(calibration)
             )
-            adv_metadata = [
-                {
-                    "correct_index": p["correct_letter_index"],
-                    "neg_index": p["neg_letter_index"],
-                    "pos_id": p["pos_id"],
-                    "neg_id": p["neg_id"],
-                }
-                for p in adv_pairs
-            ]
-            with open("adv_pairs_metadata.json", "w") as f:
-                json.dump(adv_metadata, f, indent=2)
 
             probe = MedNSQProbe(model)
             baseline_margins_all = probe.compute_per_sample_margins(adv_pairs)
-            torch.save(baseline_margins_all, "baseline_margins.pt")
             baseline_eval = evaluate_model(model, tokenizer, evaluation)
             print("\n=== Baseline Held-out Evaluation ===")
             print("Baseline accuracy:", baseline_eval["accuracy"])
             print("Baseline mean margin:", baseline_eval["mean_margin"])
+
+            # Sanity check dimensions before EMS loop
+            print("Layer 0 weight shape:", probe.get_layer_weight(0).shape)
 
             all_layer_summaries: List[Dict[str, Any]] = []
             for layer_idx in layers_to_test:
@@ -1333,8 +1301,6 @@ def main():
                     baseline_eval,
                 )
                 all_layer_summaries.append(summary)
-                with open(f"layer_{layer_idx}_results.json", "w") as f:
-                    json.dump(summary, f, indent=2)
                 num_anchors = len(summary["validated_anchors"])
                 max_drop = summary.get("max_drop", 0.0)
                 log_progress(f"Seed {seed} Layer {layer_idx} anchors={num_anchors} max_drop={max_drop:.4f}")
@@ -1369,27 +1335,20 @@ def main():
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
 
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
         # Load model once for ablation experiments (no weight modifications during ablation per seed).
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,
             device_map="auto",
+            trust_remote_code=True,
         )
-        # Dynamically set architecture parameters from model.config
-        config = model.config
-        HIDDEN_SIZE = config.hidden_size
-        NUM_LAYERS = config.num_hidden_layers
-        NUM_ATTENTION_HEADS = config.num_attention_heads
-        INTERMEDIATE_SIZE = config.intermediate_size
-        HEAD_DIM = HIDDEN_SIZE // NUM_ATTENTION_HEADS
+        layers = getattr(getattr(model, "model", model), "layers", None)
+        assert layers is not None, "Cannot find transformer layers"
+        test_weight = _get_mlp_down_proj(layers[0]).weight
+        print("Sanity check weight shape:", test_weight.shape)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
-        print_gpu_memory()
 
         # Final EMS summary across all seeds is stored in all_seed_results.
         print("\n=== Anchor Stability Summary ===")
@@ -1459,7 +1418,6 @@ def main():
             print(f"(layer={layer}, col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
             log_progress(f"  (layer={layer}, col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
 
-        print_gpu_memory()
         print("\n=== Running Anchor Activation Patching Experiment ===")
         calibration_samples = calibration_reference[:120]
         run_anchor_activation_patching_experiment(
@@ -1534,19 +1492,6 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
-        print_gpu_memory()
-
-        final_summary = {
-            "anchors": anchors_final_data,
-            "anchor_frequency": [
-                {"layer": layer, "column": col, "frequency": freq}
-                for (layer, col), freq in anchor_frequency.items()
-            ],
-            "layers_tested": layers_to_test,
-            "model": model_name,
-        }
-        with open("final_experiment_summary.json", "w") as f:
-            json.dump(final_summary, f, indent=2)
 
 
 if __name__ == "__main__":

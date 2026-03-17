@@ -3,14 +3,73 @@ from typing import List, Dict, Any
 import torch
 
 
+def _get_backbone(model):
+    if hasattr(model, "model"):
+        return model.model
+    if hasattr(model, "transformer"):
+        return model.transformer
+    if hasattr(model, "gpt_neox"):
+        return model.gpt_neox
+    return model
+
+
+def _get_layers(model):
+    backbone = _get_backbone(model)
+    if hasattr(backbone, "layers"):
+        return backbone.layers
+    if hasattr(backbone, "h"):
+        return backbone.h
+    if hasattr(backbone, "decoder") and hasattr(backbone.decoder, "layers"):
+        return backbone.decoder.layers
+    raise ValueError("Unsupported architecture: cannot find transformer layers")
+
+
+def _get_mlp_down_proj(layer):
+    if hasattr(layer, "mlp"):
+        if hasattr(layer.mlp, "down_proj"):
+            return layer.mlp.down_proj
+        if hasattr(layer.mlp, "fc2"):
+            return layer.mlp.fc2
+    if hasattr(layer, "feed_forward"):
+        if hasattr(layer.feed_forward, "w2"):
+            return layer.feed_forward.w2
+    raise ValueError("Unknown MLP structure: cannot find down_proj / fc2 / w2")
+
+
 class MedNSQProbe:
 
     def __init__(self, model):
+        # Fix: typo modele -> model
         self.model = model
 
+        # Cache architecture once (centralized dimension inference)
+        self.layers = _get_layers(model)
+        sample_layer = self.layers[0]
+        down_proj = _get_mlp_down_proj(sample_layer)
+
+        self.hidden_size = down_proj.weight.shape[0]
+        self.intermediate_size = down_proj.weight.shape[1]
+
+        attn = sample_layer.self_attn
+
+        self.num_heads = getattr(model.config, "num_attention_heads", None)
+        if self.num_heads is None:
+            text_config = getattr(model.config, "text_config", None)
+            if text_config is not None:
+                self.num_heads = getattr(text_config, "num_attention_heads", None)
+        if self.num_heads is None:
+            raise ValueError("Cannot infer num_attention_heads")
+
+        self.head_dim = self.hidden_size // self.num_heads
+
+        print("=== Model Dimensions ===")
+        print("hidden_size:", self.hidden_size)
+        print("intermediate_size:", self.intermediate_size)
+        print("num_heads:", self.num_heads)
+        print("head_dim:", self.head_dim)
+
     def get_layer_weight(self, layer_idx: int) -> torch.Tensor:
-        layer_stack = self.model.model.layers
-        return layer_stack[layer_idx].mlp.down_proj.weight
+        return _get_mlp_down_proj(self.layers[layer_idx]).weight
 
     def _final_token_logits(self, input_ids, attention_mask):
         outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
