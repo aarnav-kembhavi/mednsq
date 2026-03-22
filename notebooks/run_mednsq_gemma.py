@@ -14,8 +14,9 @@ from mednsq_data import load_mcq_dataset, build_adversarial_pairs, format_prompt
 from mednsq_eval import evaluate_model, _get_letter_token_ids
 from mednsq_probe import MedNSQProbe
 import json
+from scipy.stats import norm
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 128
+RANDOM_BASELINE_COLS = 512
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 32
 @dataclass
@@ -313,6 +314,14 @@ for col in stage2_columns:
             track_flips=True,
         )
 z = (mean_drop - mu_rand) / (sigma_rand + 1e-8)
+        # One-sided p-value (positive drop direction)
+        p_value = 1 - norm.cdf(z)
+
+        # Cohen's d (effect size)
+        std_drop = float(drops.std(unbiased=False).item())
+        std_drop = max(std_drop, 1e-3)  # prevent instability
+        cohens_d = mean_drop / std_drop
+
         median_drop = float(torch.median(drops).item())
 result = {
             "layer": layer_idx,
@@ -320,6 +329,8 @@ result = {
             "mean_drop": mean_drop,
             "median_drop": median_drop,
             "z_score": z,
+            "p_value": p_value,
+            "cohens_d": cohens_d,
             "flip_rate": flip_rate,
             "lethal_flip_rate": lethal_flip_rate,
         }
@@ -329,9 +340,18 @@ print(
             f"layer={layer_idx} column={col} "
             f"drop={mean_drop:.6f} median_drop={median_drop:.6f} Z={z:.3f} "
             f"flip={flip_rate:.4f} lethal={lethal_flip_rate:.4f}"
+            f" p={p_value:.3e} d={cohens_d:.3f}"
         )
 if z > Z_THRESHOLD:
             validated_anchors.append(result)
+    # Apply FDR correction (reporting only, NOT for selection)
+    if stage2_results:
+        p_values = [r["p_value"] for r in stage2_results]
+        fdr_mask = benjamini_hochberg(p_values, q=0.05)
+
+        for r, keep in zip(stage2_results, fdr_mask):
+            r["fdr_significant"] = keep
+
 # Sanity checks over Stage 2 flip statistics.
     if stage2_results:
         # Identical flip_rate across many columns.
@@ -947,6 +967,26 @@ print("\n=== Head-to-Anchor Attribution ===")
 with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {output_path}")
+def benjamini_hochberg(p_values, q=0.05):
+    m = len(p_values)
+    sorted_indices = sorted(range(m), key=lambda i: p_values[i])
+    sorted_p = [p_values[i] for i in sorted_indices]
+
+    thresholds = [(i + 1) / m * q for i in range(m)]
+
+    passed = [False] * m
+    max_i = -1
+
+    for i in range(m):
+        if sorted_p[i] <= thresholds[i]:
+            max_i = i
+
+    if max_i >= 0:
+        for i in range(max_i + 1):
+            passed[sorted_indices[i]] = True
+
+    return passed
+
 def main():
     # Use device map auto-loading; seeds are handled per-run below.
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
