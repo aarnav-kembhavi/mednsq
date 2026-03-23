@@ -25,15 +25,29 @@ def _get_layers(model):
 
 
 def _get_mlp_down_proj(layer):
-    if hasattr(layer, "mlp"):
-        if hasattr(layer.mlp, "down_proj"):
-            return layer.mlp.down_proj
-        if hasattr(layer.mlp, "fc2"):
-            return layer.mlp.fc2
-    if hasattr(layer, "feed_forward"):
+    """Resolve MLP output projection (down_proj) for Gemma / LLaMA / Mistral-style blocks."""
+    module = None
+    # LLaMA-style: layer.mlp.down_proj
+    if hasattr(layer, "mlp") and hasattr(layer.mlp, "down_proj"):
+        module = layer.mlp.down_proj
+    elif hasattr(layer, "mlp"):
+        mlp = layer.mlp
+        if hasattr(mlp, "down_proj"):
+            module = mlp.down_proj
+        elif hasattr(mlp, "fc2"):
+            module = mlp.fc2
+    if module is None and hasattr(layer, "feed_forward"):
         if hasattr(layer.feed_forward, "w2"):
-            return layer.feed_forward.w2
-    raise ValueError("Unknown MLP structure: cannot find down_proj / fc2 / w2")
+            module = layer.feed_forward.w2
+    if module is None:
+        raise RuntimeError(
+            "Unknown MLP structure: cannot find down_proj / fc2 / w2 on this layer"
+        )
+    if not hasattr(module, "weight"):
+        raise RuntimeError("Invalid down_proj module: no weight")
+    if module.weight.dim() != 2:
+        raise RuntimeError("Invalid down_proj weight shape")
+    return module
 
 
 class MedNSQProbe:
