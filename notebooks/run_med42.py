@@ -23,7 +23,7 @@ from scipy.stats import norm
 
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 512
+RANDOM_BASELINE_COLS = 256
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 32
 
@@ -37,7 +37,7 @@ class EMSConfig:
     layer_idx: int = 2
     calibration_size: int = 800
     stage1_top_k: int = 256
-    stage1_samples: int = 120
+    stage1_samples: int = 60
     stage2_top_k: int = 128
     stage2_samples: int = 800
 
