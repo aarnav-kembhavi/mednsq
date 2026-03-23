@@ -526,6 +526,85 @@ def run_dataset_evaluation(
     print(f"p-value: {p_value}")
     print(f"Cohen's d: {cohens_d}")
 
+    print("\n=== PER-ANCHOR ANALYSIS ===")
+
+    per_anchor_drops: List[Tuple[int, int, float]] = []
+
+    for (l, c) in anchor_neurons:
+        single = [(l, c)]
+
+        mean_drop, _, _ = mean_drop_for_set(
+            model,
+            adv_pairs,
+            letter_token_ids,
+            tokenizer,
+            single,
+            baseline,
+        )
+
+        per_anchor_drops.append((l, c, mean_drop))
+
+    per_anchor_drops.sort(key=lambda x: x[2], reverse=True)
+
+    print("\nTop 15 anchors (individual impact):")
+    for i, (l, c, d) in enumerate(per_anchor_drops[:15]):
+        print(f"{i+1}. Layer {l}, Col {c} -> Drop: {d}")
+
+    drops_only = np.array([d for (_, _, d) in per_anchor_drops], dtype=np.float32)
+
+    print("\nAnchor drop stats:")
+    print(f"Mean: {float(np.mean(drops_only))}")
+    print(f"Std: {float(np.std(drops_only))}")
+    print(f"Max: {float(np.max(drops_only))}")
+    print(f"Min: {float(np.min(drops_only))}")
+
+    threshold = float(np.mean(drops_only))
+    count_strong = int(np.sum(drops_only > threshold))
+
+    print(f"\nAnchors above mean: {count_strong} / {len(per_anchor_drops)}")
+
+    print("\n=== K-SWEEP ANALYSIS ===")
+
+    k_values = [2, 4, 8, 16, 32, 48, 64]
+
+    for k in k_values:
+        if k > len(anchor_neurons):
+            continue
+        if k > len(candidate_neurons):
+            continue
+
+        current_anchors = anchor_neurons[:k]
+
+        anchor_mean_k, _, _ = mean_drop_for_set(
+            model,
+            adv_pairs,
+            letter_token_ids,
+            tokenizer,
+            current_anchors,
+            baseline,
+        )
+
+        random_k_list: List[float] = []
+        for _ in range(N_RANDOM_TRIALS):
+            subset = random.sample(candidate_neurons, k)
+            rand_mean_k, _, _ = mean_drop_for_set(
+                model,
+                adv_pairs,
+                letter_token_ids,
+                tokenizer,
+                subset,
+                baseline,
+            )
+            random_k_list.append(rand_mean_k)
+
+        random_mean_k = float(np.mean(random_k_list))
+        random_std_k = float(np.std(random_k_list))
+
+        print(f"\nk={k}")
+        print(f"Anchor mean drop: {anchor_mean_k}")
+        print(f"Random mean drop: {random_mean_k} ± {random_std_k}")
+        print(f"Diff: {anchor_mean_k - random_mean_k}")
+
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
