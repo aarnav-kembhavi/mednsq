@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
+from scipy import stats
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -47,72 +48,75 @@ BATCH_SIZE = 32
 # Tokenizer padding id is set once after tokenizer load.
 PAD_TOKEN_ID: int = 0
 
+# Top-K full-set anchor evaluation (reference-style).
+K = 64
+N_RANDOM_TRIALS = 50
 
-ANCHORS: List[Tuple[int, int]] = [
-    (9, 1384),
-    (8, 7649),
-    (21, 5671),
-    (8, 4360),
-    (11, 411),
-    (8, 3352),
-    (22, 1970),
-    (16, 1605),
-    (21, 7260),
-    (19, 6536),
-    (20, 4208),
-    (19, 7628),
-    (12, 4157),
-    (21, 6041),
-    (15, 147),
-    (22, 5),
-    (19, 7279),
-    (21, 6367),
-    (17, 7006),
-    (17, 7050),
-    (21, 3557),
-    (21, 1294),
-    (17, 514),
-    (8, 221),
-    (10, 7665),
-    (19, 109),
-    (20, 2564),
-    (15, 2385),
-    (21, 2452),
-    (19, 4048),
-    (8, 3562),
-    (11, 6445),
-    (19, 3938),
-    (22, 3223),
-    (18, 3198),
-    (19, 7519),
-    (18, 2960),
-    (20, 3500),
-    (19, 7207),
-    (16, 5736),
-    (19, 4873),
-    (19, 1228),
-    (21, 5354),
-    (15, 4696),
-    (14, 5222),
-    (20, 4196),
-    (22, 3734),
-    (19, 3896),
-    (19, 6221),
-    (22, 5805),
-    (22, 2028),
-    (19, 8156),
-    (17, 1957),
-    (22, 4562),
-    (14, 6621),
-    (13, 7321),
-    (20, 907),
-    (19, 6665),
-    (19, 5406),
-    (21, 2321),
-    (22, 2692),
-    (18, 2322),
-    (11, 4321),
-    (22, 4813),
+ANCHOR_RECORDS_RAW: List[Dict[str, Any]] = [
+    {"layer": 9, "column": 1384, "drop": 0.0},
+    {"layer": 8, "column": 7649, "drop": 0.0},
+    {"layer": 21, "column": 5671, "drop": 0.0},
+    {"layer": 8, "column": 4360, "drop": 0.0},
+    {"layer": 11, "column": 411, "drop": 0.0},
+    {"layer": 8, "column": 3352, "drop": 0.0},
+    {"layer": 22, "column": 1970, "drop": 0.0},
+    {"layer": 16, "column": 1605, "drop": 0.0},
+    {"layer": 21, "column": 7260, "drop": 0.0},
+    {"layer": 19, "column": 6536, "drop": 0.0},
+    {"layer": 20, "column": 4208, "drop": 0.0},
+    {"layer": 19, "column": 7628, "drop": 0.0},
+    {"layer": 12, "column": 4157, "drop": 0.0},
+    {"layer": 21, "column": 6041, "drop": 0.0},
+    {"layer": 15, "column": 147, "drop": 0.0},
+    {"layer": 22, "column": 5, "drop": 0.0},
+    {"layer": 19, "column": 7279, "drop": 0.0},
+    {"layer": 21, "column": 6367, "drop": 0.0},
+    {"layer": 17, "column": 7006, "drop": 0.0},
+    {"layer": 17, "column": 7050, "drop": 0.0},
+    {"layer": 21, "column": 3557, "drop": 0.0},
+    {"layer": 21, "column": 1294, "drop": 0.0},
+    {"layer": 17, "column": 514, "drop": 0.0},
+    {"layer": 8, "column": 221, "drop": 0.0},
+    {"layer": 10, "column": 7665, "drop": 0.0},
+    {"layer": 19, "column": 109, "drop": 0.0},
+    {"layer": 20, "column": 2564, "drop": 0.0},
+    {"layer": 15, "column": 2385, "drop": 0.0},
+    {"layer": 21, "column": 2452, "drop": 0.0},
+    {"layer": 19, "column": 4048, "drop": 0.0},
+    {"layer": 8, "column": 3562, "drop": 0.0},
+    {"layer": 11, "column": 6445, "drop": 0.0},
+    {"layer": 19, "column": 3938, "drop": 0.0},
+    {"layer": 22, "column": 3223, "drop": 0.0},
+    {"layer": 18, "column": 3198, "drop": 0.0},
+    {"layer": 19, "column": 7519, "drop": 0.0},
+    {"layer": 18, "column": 2960, "drop": 0.0},
+    {"layer": 20, "column": 3500, "drop": 0.0},
+    {"layer": 19, "column": 7207, "drop": 0.0},
+    {"layer": 16, "column": 5736, "drop": 0.0},
+    {"layer": 19, "column": 4873, "drop": 0.0},
+    {"layer": 19, "column": 1228, "drop": 0.0},
+    {"layer": 21, "column": 5354, "drop": 0.0},
+    {"layer": 15, "column": 4696, "drop": 0.0},
+    {"layer": 14, "column": 5222, "drop": 0.0},
+    {"layer": 20, "column": 4196, "drop": 0.0},
+    {"layer": 22, "column": 3734, "drop": 0.0},
+    {"layer": 19, "column": 3896, "drop": 0.0},
+    {"layer": 19, "column": 6221, "drop": 0.0},
+    {"layer": 22, "column": 5805, "drop": 0.0},
+    {"layer": 22, "column": 2028, "drop": 0.0},
+    {"layer": 19, "column": 8156, "drop": 0.0},
+    {"layer": 17, "column": 1957, "drop": 0.0},
+    {"layer": 22, "column": 4562, "drop": 0.0},
+    {"layer": 14, "column": 6621, "drop": 0.0},
+    {"layer": 13, "column": 7321, "drop": 0.0},
+    {"layer": 20, "column": 907, "drop": 0.0},
+    {"layer": 19, "column": 6665, "drop": 0.0},
+    {"layer": 19, "column": 5406, "drop": 0.0},
+    {"layer": 21, "column": 2321, "drop": 0.0},
+    {"layer": 22, "column": 2692, "drop": 0.0},
+    {"layer": 18, "column": 2322, "drop": 0.0},
+    {"layer": 11, "column": 4321, "drop": 0.0},
+    {"layer": 22, "column": 4813, "drop": 0.0},
 ]
 
 
@@ -364,113 +368,167 @@ def compute_per_sample_margins_phi3(
     return margins
 
 
-def compute_accuracy_from_margins(margins: torch.Tensor) -> float:
-    if margins.numel() == 0:
-        return 0.0
-    return float((margins > 0).float().mean().item())
+class Phi3Probe:
+    """Phi-3 logits-based margins at answer token (same path as batched_forward_pass)."""
+
+    def __init__(self, model: Any, letter_token_ids: torch.Tensor, tokenizer: Any = None):
+        self.model = model
+        self.letter_token_ids = letter_token_ids
+        self.tokenizer = tokenizer
+
+    def compute_per_sample_margins(self, adv_pairs: List[Dict[str, Any]]) -> torch.Tensor:
+        margins, _ = batched_forward_pass(
+            self.model, adv_pairs, self.letter_token_ids, tokenizer=self.tokenizer
+        )
+        return margins
 
 
-def run_anchor_vs_random_ablation(
+def mean_drop_for_set(
     model,
-    tokenizer,
-    anchors,
-    seeds,
-    calibration_size,
-    eval_size,
-    letter_token_ids,
-):
-    ablation_counts = [1, 4, 8, 16, 32, 48, 64]
+    adv_pairs: List[Dict[str, Any]],
+    letter_token_ids: torch.Tensor,
+    tokenizer: Any,
+    neuron_set: List[Tuple[int, int]],
+    baseline_margins: torch.Tensor,
+) -> Tuple[float, float, torch.Tensor]:
+    saved: List[Tuple[int, int, torch.Tensor]] = []
+    try:
+        for l, c in neuron_set:
+            orig = simulate_column_crush_phi3(model, l, c)
+            saved.append((l, c, orig))
+        crushed_margins, _ = batched_forward_pass(
+            model, adv_pairs, letter_token_ids, tokenizer=tokenizer
+        )
+    finally:
+        for l, c, orig in saved:
+            restore_column_phi3(model, l, c, orig)
 
-    anchor_results = {k: {"acc": [], "margin": []} for k in ablation_counts}
-    random_results = {k: {"acc": [], "margin": []} for k in ablation_counts}
+    baseline_margins = baseline_margins.float()
+    crushed_margins = crushed_margins.float()
+    if crushed_margins.device != baseline_margins.device:
+        crushed_margins = crushed_margins.to(baseline_margins.device)
+    valid = ~torch.isnan(baseline_margins) & ~torch.isnan(crushed_margins)
+    drops = baseline_margins[valid] - crushed_margins[valid]
+    if drops.numel() == 0:
+        z = torch.zeros(0, dtype=torch.float32, device=baseline_margins.device)
+        return 0.0, 0.0, z
+    mean_drop = float(drops.mean().item())
+    std_drop = float(drops.std(unbiased=False).item())
+    return mean_drop, std_drop, drops
+
+
+def enumerate_non_anchor_neurons(
+    model, anchor_set: set[Tuple[int, int]]
+) -> List[Tuple[int, int]]:
+    out: List[Tuple[int, int]] = []
+    n_layers = len(_get_phi3_layers(model))
+    for l in range(n_layers):
+        w = _phi3_down_proj_weight(model, l)
+        n_cols = int(w.shape[1])
+        for c in range(n_cols):
+            if (l, c) not in anchor_set:
+                out.append((l, c))
+    return out
+
+
+def cohens_d_two_sample(x: np.ndarray, y: np.ndarray) -> float:
+    nx, ny = len(x), len(y)
+    if nx == 0 or ny == 0:
+        return float("nan")
+    mx, my = float(np.mean(x)), float(np.mean(y))
+    vx = float(np.var(x, ddof=1)) if nx > 1 else 0.0
+    vy = float(np.var(y, ddof=1)) if ny > 1 else 0.0
+    pooled = np.sqrt(((nx - 1) * vx + (ny - 1) * vy) / (nx + ny - 2))
+    if pooled == 0.0:
+        return float("nan")
+    return (mx - my) / pooled
+
+
+def run_dataset_evaluation(
+    dataset_name: str,
+    model: Any,
+    tokenizer: Any,
+    letter_token_ids: torch.Tensor,
+    calibration_size: int,
+    eval_size: int,
+    seed: int,
+) -> None:
+    _set_reproducible(seed)
 
     from mednsq_data import load_mcq_dataset, build_adversarial_pairs
 
-    anchor_layers = list(set(l for l, _ in anchors))
+    samples = load_mcq_dataset(n_total=calibration_size + eval_size)
+    random.shuffle(samples)
+    calibration = samples[:calibration_size]
+    _evaluation = samples[calibration_size : calibration_size + eval_size]
 
-    for seed in seeds:
-        _set_reproducible(seed)
+    adv_pairs = build_adversarial_pairs(model, tokenizer, calibration, n_calib=len(calibration))
+    _assert_adv_pairs_shape(adv_pairs)
 
-        samples = load_mcq_dataset(n_total=calibration_size + eval_size)
-        random.shuffle(samples)
+    probe = Phi3Probe(model, letter_token_ids, tokenizer=tokenizer)
+    baseline = probe.compute_per_sample_margins(adv_pairs)
 
-        calibration = samples[:calibration_size]
-        _evaluation = samples[calibration_size : calibration_size + eval_size]
+    anchors_sorted = sorted(
+        ANCHOR_RECORDS_RAW, key=lambda x: float(x.get("drop", 0.0)), reverse=True
+    )[:K]
+    anchor_neurons = [(int(a["layer"]), int(a["column"])) for a in anchors_sorted]
+    anchor_set = set(anchor_neurons)
 
-        adv_pairs = build_adversarial_pairs(model, tokenizer, calibration, n_calib=len(calibration))
-        _assert_adv_pairs_shape(adv_pairs)
+    anchor_mean, anchor_std, _ = mean_drop_for_set(
+        model,
+        adv_pairs,
+        letter_token_ids,
+        tokenizer,
+        anchor_neurons,
+        baseline,
+    )
 
-        for k in ablation_counts:
-            if k > len(anchors):
-                continue
+    candidate_neurons = enumerate_non_anchor_neurons(model, anchor_set)
+    k_need = len(anchor_neurons)
+    if len(candidate_neurons) < k_need:
+        raise RuntimeError(
+            f"Not enough candidate neurons: need {k_need}, have {len(candidate_neurons)}"
+        )
 
-            subset = anchors[:k]
+    random_drops_list: List[float] = []
+    for _ in range(N_RANDOM_TRIALS):
+        subset = random.sample(candidate_neurons, k_need)
+        mean_drop, _, _ = mean_drop_for_set(
+            model,
+            adv_pairs,
+            letter_token_ids,
+            tokenizer,
+            subset,
+            baseline,
+        )
+        random_drops_list.append(mean_drop)
 
-            saved = []
-            try:
-                for l, c in subset:
-                    orig = simulate_column_crush_phi3(model, l, c)
-                    saved.append((l, c, orig))
+    random_mean = float(np.mean(random_drops_list))
+    random_std = float(np.std(random_drops_list))
+    difference = anchor_mean - random_mean
 
-                margins = compute_per_sample_margins_phi3(
-                    model, adv_pairs, letter_token_ids, tokenizer=tokenizer
-                )
-                mean_margin = float(margins.mean().item()) if margins.numel() else 0.0
-                acc = compute_accuracy_from_margins(margins)
+    anchor_list = np.array([anchor_mean] * N_RANDOM_TRIALS, dtype=np.float64)
+    random_arr = np.array(random_drops_list, dtype=np.float64)
+    ttest = stats.ttest_ind(
+        anchor_list,
+        random_arr,
+        equal_var=False,
+        alternative="greater",
+    )
+    p_value = float(ttest.pvalue)
 
-                anchor_results[k]["acc"].append(acc)
-                anchor_results[k]["margin"].append(mean_margin)
+    cohens_d = cohens_d_two_sample(anchor_list, random_arr)
 
-                print(f"[ANCHOR][Seed {seed}] k={k} acc={acc:.6f} margin={mean_margin:.6f}")
+    print(f"Dataset: {dataset_name}")
+    print(f"Anchor: {anchor_mean} ± {anchor_std}")
+    print(f"Random: {random_mean} ± {random_std}")
+    print(f"Diff: {difference}")
+    print(f"p-value: {p_value}")
+    print(f"Cohen's d: {cohens_d}")
 
-            finally:
-                for l, c, orig in saved:
-                    restore_column_phi3(model, l, c, orig)
-
-            random_neurons = set()
-            while len(random_neurons) < k:
-                l = random.choice(anchor_layers)
-                max_col = _phi3_down_proj_weight(model, l).shape[1] - 1
-                c = random.randint(0, max_col)
-                random_neurons.add((l, c))
-
-            subset_random = list(random_neurons)
-
-            saved = []
-            try:
-                for l, c in subset_random:
-                    orig = simulate_column_crush_phi3(model, l, c)
-                    saved.append((l, c, orig))
-
-                margins = compute_per_sample_margins_phi3(
-                    model, adv_pairs, letter_token_ids, tokenizer=tokenizer
-                )
-                mean_margin = float(margins.mean().item()) if margins.numel() else 0.0
-                acc = compute_accuracy_from_margins(margins)
-
-                random_results[k]["acc"].append(acc)
-                random_results[k]["margin"].append(mean_margin)
-
-                print(f"[RANDOM][Seed {seed}] k={k} acc={acc:.6f} margin={mean_margin:.6f}")
-
-            finally:
-                for l, c, orig in saved:
-                    restore_column_phi3(model, l, c, orig)
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
-    for k in ablation_counts:
-        if not anchor_results[k]["acc"]:
-            continue
-
-        a_acc = sum(anchor_results[k]["acc"]) / len(anchor_results[k]["acc"])
-        r_acc = sum(random_results[k]["acc"]) / len(random_results[k]["acc"])
-
-        print(f"k={k}")
-        print(f"Anchor acc: {a_acc}")
-        print(f"Random acc: {r_acc}")
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
 
 
 def main() -> None:
@@ -499,15 +557,16 @@ def main() -> None:
     _assert_letter_token_ids(letter_token_ids)
     letter_token_ids = letter_token_ids.to(device)
 
-    run_anchor_vs_random_ablation(
-        model=model,
-        tokenizer=tokenizer,
-        anchors=ANCHORS,
-        seeds=[1, 2, 3],
-        calibration_size=400,
-        eval_size=60,
-        letter_token_ids=letter_token_ids,
-    )
+    for dataset_name in ("mcq",):
+        run_dataset_evaluation(
+            dataset_name=dataset_name,
+            model=model,
+            tokenizer=tokenizer,
+            letter_token_ids=letter_token_ids,
+            calibration_size=400,
+            eval_size=60,
+            seed=1,
+        )
 
 
 if __name__ == "__main__":
