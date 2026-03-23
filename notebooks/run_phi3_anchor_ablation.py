@@ -218,7 +218,6 @@ def _answer_positions_batch(
         ids_slice = input_ids[i, :L].cpu().tolist()
         positions = [j for j in range(L) if ids_slice[j] in letter_set]
         if not positions:
-            print("WARNING: skipping sample, no answer token found")
             result.append(None)
             continue
         answer_idx = max(positions)
@@ -250,8 +249,6 @@ def batched_forward_pass(
 
     margins: List[float] = []
     preds: List[int] = []
-    all_answer_indices: List[int] = []
-    all_distances: List[int] = []
 
     # Validate token ids with vocab size when available.
     vocab_size = getattr(getattr(model, "config", None), "vocab_size", None)
@@ -300,28 +297,6 @@ def batched_forward_pass(
 
         answer_indices = _answer_positions_batch(input_ids, seq_lens, letter_token_ids)
 
-        for idx in answer_indices:
-            if idx is not None:
-                all_answer_indices.append(idx)
-        for i in range(len(answer_indices)):
-            if answer_indices[i] is not None:
-                all_distances.append(seq_lens[i] - answer_indices[i])
-
-        # STRICT DEBUG CHECK (run once): token list with indices, A/B/C/D positions, chosen answer_idx.
-        if start == 0 and tokenizer is not None:
-            print("=== DEBUG TOKEN CHECK ===")
-            i0 = 0
-            L0 = int(seq_lens[i0])
-            ids0 = input_ids[i0, :L0].cpu().tolist()
-            token_list = [(j, ids0[j], tokenizer.decode([ids0[j]]) if ids0[j] != PAD_TOKEN_ID else "<pad>") for j in range(L0)]
-            print("Token list (idx, id, decode):", token_list)
-            letter_set = set(int(x) for x in letter_token_ids.cpu().tolist())
-            letter_positions = [j for j in range(L0) if ids0[j] in letter_set]
-            print("Positions of A/B/C/D tokens:", letter_positions)
-            print("Chosen answer_idx:", answer_indices[i0])
-            print("Answer idx distribution sample:", all_answer_indices[:10])
-            print(tokenizer.decode(input_ids[0, :L0]))
-
         with torch.no_grad():
             out = model(input_ids=input_ids, attention_mask=attention_mask)
             logits = out.logits  # [B, max_len, vocab]
@@ -351,22 +326,6 @@ def batched_forward_pass(
             letter_logits = token_logits.index_select(0, letter_token_ids)
             pred_idx = int(torch.argmax(letter_logits).item())
             preds.append(pred_idx)
-
-    if len(all_answer_indices) > 0:
-        arr = torch.tensor(all_answer_indices)
-        print("=== Answer Index Stats ===")
-        print("min:", int(arr.min().item()))
-        print("max:", int(arr.max().item()))
-        print("mean:", float(arr.float().mean().item()))
-        hist = torch.histc(arr.float(), bins=10)
-        print("histogram:", hist.tolist())
-        if arr.max().item() - arr.min().item() > 50:
-            print("WARNING: Answer positions are highly scattered")
-    if len(all_distances) > 0:
-        dist_tensor = torch.tensor(all_distances)
-        print("=== Distance to End Stats ===")
-        print("mean distance:", float(dist_tensor.float().mean().item()))
-        print("max distance:", int(dist_tensor.max().item()))
 
     return torch.tensor(margins, dtype=torch.float32), preds
 
@@ -405,6 +364,12 @@ def compute_per_sample_margins_phi3(
     return margins
 
 
+def compute_accuracy_from_margins(margins: torch.Tensor) -> float:
+    if margins.numel() == 0:
+        return 0.0
+    return float((margins > 0).float().mean().item())
+
+
 def run_anchor_vs_random_ablation(
     model,
     tokenizer,
@@ -414,33 +379,26 @@ def run_anchor_vs_random_ablation(
     eval_size,
     letter_token_ids,
 ):
-    print("\n=== ANCHOR vs RANDOM ABLATION ===")
-
     ablation_counts = [1, 4, 8, 16, 32, 48, 64]
 
     anchor_results = {k: {"acc": [], "margin": []} for k in ablation_counts}
     random_results = {k: {"acc": [], "margin": []} for k in ablation_counts}
 
     from mednsq_data import load_mcq_dataset, build_adversarial_pairs
-    from mednsq_eval import evaluate_model
 
     anchor_layers = list(set(l for l, _ in anchors))
 
     for seed in seeds:
-        print(f"\n===== SEED {seed} =====")
         _set_reproducible(seed)
 
         samples = load_mcq_dataset(n_total=calibration_size + eval_size)
         random.shuffle(samples)
 
         calibration = samples[:calibration_size]
-        evaluation = samples[calibration_size : calibration_size + eval_size]
+        _evaluation = samples[calibration_size : calibration_size + eval_size]
 
         adv_pairs = build_adversarial_pairs(model, tokenizer, calibration, n_calib=len(calibration))
         _assert_adv_pairs_shape(adv_pairs)
-
-        baseline_eval = evaluate_model(model, tokenizer, evaluation)
-        print(f"[Seed {seed}] BASELINE acc={baseline_eval.get('accuracy', 0.0):.6f}")
 
         for k in ablation_counts:
             if k > len(anchors):
@@ -454,13 +412,11 @@ def run_anchor_vs_random_ablation(
                     orig = simulate_column_crush_phi3(model, l, c)
                     saved.append((l, c, orig))
 
-                eval_metrics = evaluate_model(model, tokenizer, evaluation)
-                acc = float(eval_metrics.get("accuracy", 0.0))
-
                 margins = compute_per_sample_margins_phi3(
                     model, adv_pairs, letter_token_ids, tokenizer=tokenizer
                 )
                 mean_margin = float(margins.mean().item()) if margins.numel() else 0.0
+                acc = compute_accuracy_from_margins(margins)
 
                 anchor_results[k]["acc"].append(acc)
                 anchor_results[k]["margin"].append(mean_margin)
@@ -486,13 +442,11 @@ def run_anchor_vs_random_ablation(
                     orig = simulate_column_crush_phi3(model, l, c)
                     saved.append((l, c, orig))
 
-                eval_metrics = evaluate_model(model, tokenizer, evaluation)
-                acc = float(eval_metrics.get("accuracy", 0.0))
-
                 margins = compute_per_sample_margins_phi3(
                     model, adv_pairs, letter_token_ids, tokenizer=tokenizer
                 )
                 mean_margin = float(margins.mean().item()) if margins.numel() else 0.0
+                acc = compute_accuracy_from_margins(margins)
 
                 random_results[k]["acc"].append(acc)
                 random_results[k]["margin"].append(mean_margin)
@@ -507,8 +461,6 @@ def run_anchor_vs_random_ablation(
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
 
-    print("\n=== FINAL COMPARISON ===")
-
     for k in ablation_counts:
         if not anchor_results[k]["acc"]:
             continue
@@ -516,7 +468,7 @@ def run_anchor_vs_random_ablation(
         a_acc = sum(anchor_results[k]["acc"]) / len(anchor_results[k]["acc"])
         r_acc = sum(random_results[k]["acc"]) / len(random_results[k]["acc"])
 
-        print(f"\nk={k}")
+        print(f"k={k}")
         print(f"Anchor acc: {a_acc}")
         print(f"Random acc: {r_acc}")
 
@@ -525,9 +477,6 @@ def main() -> None:
     _ensure_import_paths()
 
     from mednsq_eval import _get_letter_token_ids
-
-    print("=== RUNNING FIXED ANCHOR ABLATION ===")
-    print("Total anchors:", len(ANCHORS))
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
     if tokenizer.pad_token is None:
