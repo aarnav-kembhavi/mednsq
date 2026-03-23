@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-from scipy import stats
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -431,19 +430,6 @@ def enumerate_non_anchor_neurons(
     return out
 
 
-def cohens_d_two_sample(x: np.ndarray, y: np.ndarray) -> float:
-    nx, ny = len(x), len(y)
-    if nx == 0 or ny == 0:
-        return float("nan")
-    mx, my = float(np.mean(x)), float(np.mean(y))
-    vx = float(np.var(x, ddof=1)) if nx > 1 else 0.0
-    vy = float(np.var(y, ddof=1)) if ny > 1 else 0.0
-    pooled = np.sqrt(((nx - 1) * vx + (ny - 1) * vy) / (nx + ny - 2))
-    if pooled == 0.0:
-        return float("nan")
-    return (mx - my) / pooled
-
-
 def run_dataset_evaluation(
     dataset_name: str,
     model: Any,
@@ -471,29 +457,31 @@ def run_dataset_evaluation(
     anchors_sorted = sorted(
         ANCHOR_RECORDS_RAW, key=lambda x: float(x.get("drop", 0.0)), reverse=True
     )[:K]
+
     anchor_neurons = [(int(a["layer"]), int(a["column"])) for a in anchors_sorted]
     anchor_set = set(anchor_neurons)
+
+    candidate_neurons = enumerate_non_anchor_neurons(model, anchor_set)
+
+    k = 64
+
+    if len(anchor_neurons) < k or len(candidate_neurons) < k:
+        raise RuntimeError("Not enough neurons for k=64")
 
     anchor_mean, anchor_std, _ = mean_drop_for_set(
         model,
         adv_pairs,
         letter_token_ids,
         tokenizer,
-        anchor_neurons,
+        anchor_neurons[:k],
         baseline,
     )
 
-    candidate_neurons = enumerate_non_anchor_neurons(model, anchor_set)
-    k_need = len(anchor_neurons)
-    if len(candidate_neurons) < k_need:
-        raise RuntimeError(
-            f"Not enough candidate neurons: need {k_need}, have {len(candidate_neurons)}"
-        )
-
-    random_drops_list: List[float] = []
+    random_drops_list = []
     for _ in range(N_RANDOM_TRIALS):
-        subset = random.sample(candidate_neurons, k_need)
-        mean_drop, _, _ = mean_drop_for_set(
+        subset = random.sample(candidate_neurons, k)
+
+        rand_mean, _, _ = mean_drop_for_set(
             model,
             adv_pairs,
             letter_token_ids,
@@ -501,109 +489,16 @@ def run_dataset_evaluation(
             subset,
             baseline,
         )
-        random_drops_list.append(mean_drop)
+        random_drops_list.append(rand_mean)
 
     random_mean = float(np.mean(random_drops_list))
     random_std = float(np.std(random_drops_list))
-    difference = anchor_mean - random_mean
-
-    anchor_list = np.array([anchor_mean] * N_RANDOM_TRIALS, dtype=np.float64)
-    random_arr = np.array(random_drops_list, dtype=np.float64)
-    ttest = stats.ttest_ind(
-        anchor_list,
-        random_arr,
-        equal_var=False,
-        alternative="greater",
-    )
-    p_value = float(ttest.pvalue)
-
-    cohens_d = cohens_d_two_sample(anchor_list, random_arr)
 
     print(f"Dataset: {dataset_name}")
-    print(f"Anchor: {anchor_mean} ± {anchor_std}")
-    print(f"Random: {random_mean} ± {random_std}")
-    print(f"Diff: {difference}")
-    print(f"p-value: {p_value}")
-    print(f"Cohen's d: {cohens_d}")
-
-    print("\n=== PER-ANCHOR ANALYSIS ===")
-
-    per_anchor_drops: List[Tuple[int, int, float]] = []
-
-    for (l, c) in anchor_neurons:
-        single = [(l, c)]
-
-        mean_drop, _, _ = mean_drop_for_set(
-            model,
-            adv_pairs,
-            letter_token_ids,
-            tokenizer,
-            single,
-            baseline,
-        )
-
-        per_anchor_drops.append((l, c, mean_drop))
-
-    per_anchor_drops.sort(key=lambda x: x[2], reverse=True)
-
-    print("\nTop 15 anchors (individual impact):")
-    for i, (l, c, d) in enumerate(per_anchor_drops[:15]):
-        print(f"{i+1}. Layer {l}, Col {c} -> Drop: {d}")
-
-    drops_only = np.array([d for (_, _, d) in per_anchor_drops], dtype=np.float32)
-
-    print("\nAnchor drop stats:")
-    print(f"Mean: {float(np.mean(drops_only))}")
-    print(f"Std: {float(np.std(drops_only))}")
-    print(f"Max: {float(np.max(drops_only))}")
-    print(f"Min: {float(np.min(drops_only))}")
-
-    threshold = float(np.mean(drops_only))
-    count_strong = int(np.sum(drops_only > threshold))
-
-    print(f"\nAnchors above mean: {count_strong} / {len(per_anchor_drops)}")
-
-    print("\n=== K-SWEEP ANALYSIS ===")
-
-    k_values = [2, 4, 8, 16, 32, 48, 64]
-
-    for k in k_values:
-        if k > len(anchor_neurons):
-            continue
-        if k > len(candidate_neurons):
-            continue
-
-        current_anchors = anchor_neurons[:k]
-
-        anchor_mean_k, _, _ = mean_drop_for_set(
-            model,
-            adv_pairs,
-            letter_token_ids,
-            tokenizer,
-            current_anchors,
-            baseline,
-        )
-
-        random_k_list: List[float] = []
-        for _ in range(N_RANDOM_TRIALS):
-            subset = random.sample(candidate_neurons, k)
-            rand_mean_k, _, _ = mean_drop_for_set(
-                model,
-                adv_pairs,
-                letter_token_ids,
-                tokenizer,
-                subset,
-                baseline,
-            )
-            random_k_list.append(rand_mean_k)
-
-        random_mean_k = float(np.mean(random_k_list))
-        random_std_k = float(np.std(random_k_list))
-
-        print(f"\nk={k}")
-        print(f"Anchor mean drop: {anchor_mean_k}")
-        print(f"Random mean drop: {random_mean_k} ± {random_std_k}")
-        print(f"Diff: {anchor_mean_k - random_mean_k}")
+    print(f"k=64")
+    print(f"Anchor mean drop: {anchor_mean}")
+    print(f"Random mean drop: {random_mean} ± {random_std}")
+    print(f"Diff: {anchor_mean - random_mean}")
 
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
