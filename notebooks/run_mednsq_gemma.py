@@ -1055,7 +1055,7 @@ if RUN_HEAD_ONLY:
         # )
     else:
         # Sweep over multiple random seeds to test anchor stability.
-        seeds = [1, 2, 3]
+        seeds = [1, 2]
         checkpoint = load_checkpoint()
         if checkpoint:
             completed_seeds = list(checkpoint["completed_seeds"])
