@@ -2,6 +2,7 @@
 Med42 anchor discovery via EMS only — stripped from run_mednsq_gemma.py.
 """
 
+import datetime
 import random
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
@@ -15,6 +16,17 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from mednsq_data import build_adversarial_pairs, load_mcq_dataset
 from mednsq_eval import _get_letter_token_ids, evaluate_model
 from mednsq_probe import MedNSQProbe
+
+LOG_FILE = "run_med42_debug.log"
+
+
+def log(msg: str) -> None:
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    full_msg = f"[{timestamp}] {msg}"
+    print(full_msg, flush=True)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(full_msg + "\n")
+
 
 # EMS configuration constants (same as run_mednsq_gemma.py)
 RANDOM_BASELINE_COLS = 90
@@ -213,8 +225,10 @@ def _run_ems_for_layer(
     baseline_eval: Dict[str, float],
 ) -> Dict[str, Any]:
     """Run the full EMS pipeline (Taylor → Stage1 → Stage2 → Z) for one layer."""
+    log(f"[Layer {layer_idx}] Computing Jacobian")
     jacobian_scores = probe.compute_contrastive_jacobian(layer_idx, adv_pairs)
     num_cols = jacobian_scores.numel()
+    log(f"[Layer {layer_idx}] Jacobian done | num_cols={num_cols}")
 
     stage1_top_k = min(cfg.stage1_top_k, num_cols)
     _top_vals, top_indices = torch.topk(jacobian_scores, k=stage1_top_k)
@@ -257,8 +271,17 @@ def _run_ems_for_layer(
         mu_rand = 0.0
         sigma_rand = 0.0
 
+    log(
+        f"[Layer {layer_idx}] Random baseline | mu={mu_rand:.6f} sigma={sigma_rand:.6f}"
+    )
+    log(f"[Layer {layer_idx}] Stage1 start | top_k={len(top_indices)}")
+
     stage1_candidates: List[Tuple[int, float]] = []
-    for col in top_indices.tolist():
+    for idx, col in enumerate(top_indices.tolist()):
+        if idx % 20 == 0:
+            log(
+                f"[Layer {layer_idx}] Stage1 progress: {idx}/{len(top_indices)}"
+            )
         drops, mean_drop, _, _ = _evaluate_column_ems(
             model,
             probe,
@@ -279,13 +302,19 @@ def _run_ems_for_layer(
     stage1_candidates.sort(key=lambda x: x[1], reverse=True)
     stage2_columns = [c for c, _ in stage1_candidates[: cfg.stage2_top_k]]
 
+    log(f"[Layer {layer_idx}] Stage2 start | candidates={len(stage2_columns)}")
+
     validated_anchors: List[Dict[str, Any]] = []
     stage2_results: List[Dict[str, Any]] = []
 
     adv_pairs_stage2 = adv_pairs[:stage2_samples]
     baseline_stage2 = baseline_margins_all[:stage2_samples]
 
-    for col in stage2_columns:
+    for idx, col in enumerate(stage2_columns):
+        if idx % 10 == 0:
+            log(
+                f"[Layer {layer_idx}] Stage2 progress: {idx}/{len(stage2_columns)}"
+            )
         drops, mean_drop, flip_rate, lethal_flip_rate = _evaluate_column_ems(
             model,
             probe,
@@ -331,6 +360,10 @@ def _run_ems_for_layer(
 
         for r, keep in zip(stage2_results, fdr_mask):
             r["fdr_significant"] = keep
+
+    log(
+        f"[Layer {layer_idx}] Stage2 done | anchors={len(validated_anchors)}"
+    )
 
     if validated_anchors:
         max_drop = max(a["mean_drop"] for a in validated_anchors)
@@ -387,6 +420,11 @@ def main() -> None:
     layers_to_test = list(range(11, 22))
     cfg = EMSConfig()
 
+    log("Starting run_med42_anchor_only")
+    log(f"Model: {model_name}")
+    log(f"Layers: {layers_to_test}")
+    log(f"Calibration size: {cfg.calibration_size}")
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -408,15 +446,24 @@ def main() -> None:
     calibration = samples[: cfg.calibration_size]
     evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
 
+    log(f"Loaded dataset: {len(samples)} samples")
+    log(f"Calibration: {len(calibration)}, Eval: {len(evaluation)}")
+
     adv_pairs = build_adversarial_pairs(
         model, tokenizer, calibration, n_calib=len(calibration)
     )
+
+    log(f"Built adversarial pairs: {len(adv_pairs)}")
 
     probe = MedNSQProbe(model)
     baseline_margins_all = probe.compute_per_sample_margins(adv_pairs)
     baseline_eval = evaluate_model(model, tokenizer, evaluation)
 
+    log(f"Baseline accuracy: {baseline_eval['accuracy']}")
+    log(f"Baseline margin: {baseline_eval['mean_margin']}")
+
     for layer_idx in layers_to_test:
+        log(f"Starting layer {layer_idx}")
         summary = _run_ems_for_layer(
             model,
             tokenizer,
@@ -430,6 +477,9 @@ def main() -> None:
         )
         n_anchors = len(summary["validated_anchors"])
         max_z = float(summary["max_z"])
+        log(
+            f"Finished layer {layer_idx} | anchors={n_anchors} | max_Z={max_z:.3f}"
+        )
         print(f"layer={layer_idx} anchors={n_anchors} max_Z={max_z:.3f}")
 
 

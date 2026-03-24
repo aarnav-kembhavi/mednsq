@@ -23,26 +23,8 @@ import json
 from scipy.stats import norm
 
 
-class Tee:
-    def __init__(self, file_path: str) -> None:
-        self.file = open(file_path, "w", encoding="utf-8")
-        self.stdout = sys.stdout
-
-    def write(self, data: str) -> None:
-        self.stdout.write(data)
-        self.file.write(data)
-
-    def flush(self) -> None:
-        self.stdout.flush()
-        self.file.flush()
-
-
-sys.stdout = Tee("run_med42_full.log")
-sys.stderr = sys.stdout
-
-
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 64
+RANDOM_BASELINE_COLS = 256
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 32
 
@@ -54,7 +36,7 @@ class EMSConfig:
 
     # Per the user-specified default experiment (A100-optimized)
     layer_idx: int = 2
-    calibration_size: int = 250
+    calibration_size: int = 800
     stage1_top_k: int = 256
     stage1_samples: int = 60
     stage2_top_k: int = 128
@@ -67,21 +49,10 @@ def log_progress(text: str) -> None:
         f.write(text + "\n")
 
 
-def append_anchor_progress(
-    layer: int,
-    col: int,
-    taylor_score: float,
-    anchor_type: str = "positive",
-) -> None:
-    """Append one anchor record (JSON line) to anchors_progress_med42.txt."""
-    rec = {
-        "layer": layer,
-        "column": col,
-        "score": float(taylor_score),
-        "type": anchor_type,
-    }
+def append_anchor_progress(layer: int, col: int, drop: float, z: float) -> None:
+    """Append one anchor line to anchors_progress.."""
     with open("anchors_progress_med42.txt", "a") as f:
-        f.write(json.dumps(rec) + "\n")
+        f.write(f"(layer={layer} col={col}) drop={drop:.2f} Z={z:.1f}\n")
 
 
 def save_checkpoint(data: Dict[str, Any]) -> None:
@@ -324,46 +295,14 @@ def _run_ems_for_layer(
         probe.get_layer_weight(layer_idx).shape,
     )
 
-    # Stage 0: directional Taylor scores for all columns (signed; no abs).
+    # Stage 0: directional Taylor scores for all columns.
     jacobian_scores = probe.compute_contrastive_jacobian(layer_idx, adv_pairs)
     num_cols = jacobian_scores.numel()
     print(f"[ProbeCheck] layer={layer_idx} num_cols={num_cols}")
 
-    col_scores = jacobian_scores.detach().cpu()
-    positive_mask = col_scores > 0
-    negative_mask = col_scores < 0
-
-    positive_indices = torch.where(positive_mask)[0]
-    negative_indices = torch.where(negative_mask)[0]
-
-    # Limit candidate space to strongest positive Taylor neurons
-    TOP_K_TAYLOR = 200
-
-    if positive_indices.numel() > 0:
-        sorted_pos = positive_indices[
-            torch.argsort(col_scores[positive_indices], descending=True)
-        ]
-        selected_cols = sorted_pos[:TOP_K_TAYLOR]
-    else:
-        selected_cols = positive_indices  # empty fallback
-
-    print(f"Total positive neurons: {positive_indices.numel()}")
-    print(f"Selected top Taylor neurons: {len(selected_cols)}")
-
-    positive_scores = col_scores[positive_indices]
-    negative_scores = col_scores[negative_indices]
-
-    print("Total neurons:", len(col_scores))
-    print("Positive neurons:", positive_scores.numel())
-    print("Negative neurons:", negative_scores.numel())
-    print("Top positive scores:", positive_scores.sort(descending=True).values[:10])
-    print("Top negative scores:", negative_scores.sort().values[:10])
-
-    # List of [layer, col, taylor_score] for JSON serialization (equivalent to (layer, col, score)).
-    positive_candidates: List[List[Any]] = [
-        [layer_idx, int(col), float(col_scores[int(col)].item())]
-        for col in positive_indices
-    ]
+    stage1_top_k = min(cfg.stage1_top_k, num_cols)
+    top_vals, top_indices = torch.topk(jacobian_scores, k=stage1_top_k)
+    print("[Taylor Top20]", top_vals[:20].detach().cpu().tolist())
 
     stage1_samples = min(cfg.stage1_samples, len(adv_pairs))
     stage2_samples = min(cfg.stage2_samples, len(adv_pairs))
@@ -413,11 +352,9 @@ def _run_ems_for_layer(
             f"Z-scores may be unstable."
         )
 
-    # Stage 1 EMS on top-k positive-Taylor columns for this layer (global anchors chosen in main()).
+    # Stage 1 EMS on top-k columns with early stopping.
     stage1_candidates: List[Tuple[int, float]] = []
-    for i, col in enumerate(selected_cols.tolist()):
-        if i % 20 == 0:
-            print(f"[Stage1] Processed {i}/{len(selected_cols)} columns")
+    for col in top_indices.tolist():
         drops, mean_drop, _, _ = _evaluate_column_ems(
             model,
             probe,
@@ -432,7 +369,7 @@ def _run_ems_for_layer(
             track_flips=False,
             pad_token_id=pad_token_id,
         )
-        if mean_drop > mu_rand:
+        if mean_drop > 0.0:
             stage1_candidates.append((int(col), mean_drop))
 
     # Keep top-k Stage 2 candidates by mean drop (positive = safety-relevant).
@@ -480,8 +417,6 @@ def _run_ems_for_layer(
         result = {
             "layer": layer_idx,
             "column": int(col),
-            "score": float(col_scores[int(col)].item()),
-            "type": "positive",
             "mean_drop": mean_drop,
             "median_drop": median_drop,
             "z_score": z,
@@ -544,12 +479,7 @@ def _run_ems_for_layer(
         )
         max_z = max(a["z_score"] for a in validated_anchors)
         for a in validated_anchors:
-            append_anchor_progress(
-                a["layer"],
-                a["column"],
-                a["score"],
-                a.get("type", "positive"),
-            )
+            append_anchor_progress(a["layer"], a["column"], a["mean_drop"], a["z_score"])
     else:
         max_drop = 0.0
         mean_drop_validated = 0.0
@@ -572,7 +502,6 @@ def _run_ems_for_layer(
         "mu_rand": mu_rand,
         "sigma_rand": sigma_rand,
         "validated_anchors": validated_anchors,
-        "positive_candidates": positive_candidates,
         "stage2_results": stage2_results,
         "max_drop": max_drop,
         "mean_drop": mean_drop_validated,
@@ -1266,7 +1195,7 @@ def main():
     RUN_HEAD_ONLY = False
 
     model_name = "m42-health/Llama3-Med42-8B"
-    layers_to_test = list(range(11, 21))
+    layers_to_test = list(range(8, 22))
 
     # Default experiment configuration (can be adjusted as needed).
     cfg = EMSConfig()
@@ -1496,30 +1425,22 @@ def main():
         with open(f"ems_seed_sweep_med42_{timestamp}.json", "w") as f:
             json.dump(all_seed_results, f, indent=2)
 
-        # Global top-50 anchors by Stage 2 EMS mean_drop (deduped across seeds).
-        all_stage2_results: List[Dict[str, Any]] = []
-
+        # Gather anchors from EMS discovery across all seeds; dedupe and keep top 64 by mean_drop.
+        anchor_to_stats: Dict[Tuple[int, int], Dict[str, float]] = {}
         for seed_result in all_seed_results:
             for layer_summary in seed_result["layers"]:
-                for r in layer_summary["stage2_results"]:
-                    all_stage2_results.append(r)
-
-        best_ems: Dict[Tuple[int, int], Dict[str, Any]] = {}
-
-        for r in all_stage2_results:
-            key = (r["layer"], r["column"])
-            score = r["mean_drop"]
-
-            if key not in best_ems or score > best_ems[key]["mean_drop"]:
-                best_ems[key] = r
-
-        merged_candidates = list(best_ems.values())
-
-        merged_candidates.sort(key=lambda x: x["mean_drop"], reverse=True)
-
-        top_global = merged_candidates[:50]
-
-        anchors = [(r["layer"], r["column"]) for r in top_global]
+                for a in layer_summary["validated_anchors"]:
+                    key = (a["layer"], a["column"])
+                    current_drop = anchor_to_stats.get(key, {}).get("drop", 0.0)
+                    if a["mean_drop"] > current_drop:
+                        anchor_to_stats[key] = {
+                            "drop": a["mean_drop"],
+                            "z": a["z_score"],
+                        }
+        sorted_anchor_stats = sorted(
+            anchor_to_stats.items(), key=lambda x: x[1]["drop"], reverse=True
+        )[:64]
+        anchors = [k for k, _ in sorted_anchor_stats]
 
         # Anchor seed stability: how often each anchor appeared across seeds.
         anchor_frequency: Dict[Tuple[int, int], int] = {}
@@ -1537,47 +1458,23 @@ def main():
 
         # Save final anchor list to anchors_med42.json and append to anchors_progress_med42.txt
         anchors_final_data = [
-            {
-                "layer": r["layer"],
-                "column": r["column"],
-                "mean_drop": r["mean_drop"],
-                "z_score": r["z_score"],
-                "score": r["score"],
-                "type": r["type"],
-            }
-            for r in top_global
+            {"layer": layer, "column": col, "drop": stats["drop"], "z": stats["z"]}
+            for (layer, col), stats in sorted_anchor_stats
         ]
         with open("anchors_med42.json", "w") as f:
             json.dump(anchors_final_data, f, indent=2)
         print("Saved anchor list to anchors_med42.json")
         log_progress("Saved anchor list to anchors_med42.json")
         with open("anchors_progress_med42.txt", "a") as f:
-            f.write("--- Final anchor list (global top-50 EMS mean_drop) ---\n")
-            for r in top_global:
-                f.write(
-                    json.dumps(
-                        {
-                            "layer": r["layer"],
-                            "column": r["column"],
-                            "mean_drop": r["mean_drop"],
-                            "z_score": r["z_score"],
-                            "score": r["score"],
-                            "type": r["type"],
-                        }
-                    )
-                    + "\n"
-                )
+            f.write("--- Final anchor list ---\n")
+            for (layer, column), stats in sorted_anchor_stats:
+                f.write(f"(layer={layer} col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}\n")
 
-        print("\n=== Final Anchors (Top 50 by EMS mean_drop) ===")
-        for r in top_global:
-            print(
-                f"(layer={r['layer']}, col={r['column']}) "
-                f"mean_drop={r['mean_drop']:.6f} Z={r['z_score']:.3f}"
-            )
-            log_progress(
-                f"(layer={r['layer']}, col={r['column']}) "
-                f"mean_drop={r['mean_drop']:.6f} Z={r['z_score']:.3f}"
-            )
+        print("\n=== Discovered Anchors ===")
+        log_progress("Discovered anchors (top 64):")
+        for (layer, column), stats in sorted_anchor_stats:
+            print(f"(layer={layer}, col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
+            log_progress(f"  (layer={layer}, col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
 
         # print("\n=== Running Anchor Activation Patching Experiment ===")
         calibration_samples = calibration_reference[:120]
