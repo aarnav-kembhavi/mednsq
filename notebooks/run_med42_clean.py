@@ -1,3 +1,7 @@
+"""
+Med42 EMS pipeline — EMS logic aligned with run_mednsq_gemma.py (Med42 model + med42 logging).
+"""
+
 import math
 import os
 import random
@@ -14,40 +18,34 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from mednsq_data import load_mcq_dataset, build_adversarial_pairs, format_prompt
 from mednsq_eval import evaluate_model, _get_letter_token_ids
-from mednsq_probe import MedNSQProbe
+from mednsq_probe import MedNSQProbe, _get_mlp_down_proj
 import json
+from scipy.stats import norm
 
 
 class Tee:
-    def __init__(self, filename):
-        self.file = open(filename, "a", buffering=1)
+    def __init__(self, file_path: str) -> None:
+        self.file = open(file_path, "w", encoding="utf-8")
         self.stdout = sys.stdout
 
-    def write(self, data):
+    def write(self, data: str) -> None:
         self.stdout.write(data)
         self.file.write(data)
 
-    def flush(self):
+    def flush(self) -> None:
         self.stdout.flush()
         self.file.flush()
 
 
-sys.stdout = Tee("experiment_full_output.log")
+sys.stdout = Tee("run_med42_clean_full.log")
+sys.stderr = sys.stdout
 
-print("DEBUG MODE ENABLED — SMOKE TEST")
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 4
+RANDOM_BASELINE_COLS = 90
 Z_THRESHOLD = 2.0
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
-# BioMistral (Mistral) architecture constants — hardcoded to prevent mis-detection
-HIDDEN_SIZE = 4096
-INTERMEDIATE_SIZE = 11008
-NUM_ATTENTION_HEADS = 32
-NUM_KEY_VALUE_HEADS = 8
-HEAD_DIM = 128
-NUM_LAYERS = 32
 
 
 @dataclass
@@ -64,38 +62,30 @@ class EMSConfig:
 
 
 def log_progress(text: str) -> None:
-    """Append a line to experiment_progress.log."""
-    with open("experiment_progress.log", "a") as f:
+    """Append a line to experiment_progress_med42_clean.log."""
+    with open("experiment_progress_med42_clean.log", "a") as f:
         f.write(text + "\n")
 
 
 def append_anchor_progress(layer: int, col: int, drop: float, z: float) -> None:
-    """Append one anchor line to anchors_progress.txt."""
-    with open("anchors_progress.txt", "a") as f:
+    """Append one anchor line to anchors_progress_med42_clean.txt."""
+    with open("anchors_progress_med42_clean.txt", "a") as f:
         f.write(f"(layer={layer} col={col}) drop={drop:.2f} Z={z:.1f}\n")
 
 
 def save_checkpoint(data: Dict[str, Any]) -> None:
-    """Save checkpoint to ems_checkpoint.pt."""
-    torch.save(data, "ems_checkpoint.pt")
+    """Save checkpoint to ems_checkpoint_med42_clean.pt."""
+    torch.save(data, "ems_checkpoint_med42_clean.pt")
 
 
 def load_checkpoint() -> Any:
-    """Load checkpoint from ems_checkpoint.pt if it exists."""
-    if os.path.exists("ems_checkpoint.pt"):
+    """Load checkpoint from ems_checkpoint_med42_clean.pt if it exists."""
+    if os.path.exists("ems_checkpoint_med42_clean.pt"):
         try:
-            return torch.load("ems_checkpoint.pt", weights_only=False)
+            return torch.load("ems_checkpoint_med42_clean.pt", weights_only=False)
         except TypeError:
-            return torch.load("ems_checkpoint.pt")
+            return torch.load("ems_checkpoint_med42_clean.pt")
     return None
-
-
-def print_gpu_memory():
-    """Debug: print current GPU memory allocated and reserved (non-intrusive)."""
-    if torch.cuda.is_available():
-        alloc = torch.cuda.memory_allocated() / 1e9
-        reserved = torch.cuda.memory_reserved() / 1e9
-        print(f"[GPU] allocated={alloc:.2f}GB reserved={reserved:.2f}GB")
 
 
 def _batched_margins_and_predictions(
@@ -103,6 +93,7 @@ def _batched_margins_and_predictions(
     adv_pairs: List[Dict[str, Any]],
     letter_token_ids: torch.Tensor,
     batch_size: int = BATCH_SIZE,
+    pad_token_id: int = 0,
 ) -> Tuple[torch.Tensor, List[int]]:
     """Compute per-sample margins and A/B/C/D predictions in mini-batches.
 
@@ -130,7 +121,7 @@ def _batched_margins_and_predictions(
             mask = pair["attention_mask"].to(device)
             pad_len = max_len - ids.shape[1]
             if pad_len > 0:
-                ids = F.pad(ids, (0, pad_len), value=0)
+                ids = F.pad(ids, (0, pad_len), value=pad_token_id)
                 mask = F.pad(mask, (0, pad_len), value=0)
             input_batch.append(ids)
             mask_batch.append(mask)
@@ -171,6 +162,7 @@ def _evaluate_column_ems(
     early_stop_sigma: float | None = None,
     max_samples: int | None = None,
     track_flips: bool = False,
+    pad_token_id: int = 0,
 ) -> Tuple[torch.Tensor, float, float, float]:
     """Evaluate EMS statistics for a single column.
 
@@ -204,7 +196,7 @@ def _evaluate_column_ems(
             batch_baseline = baseline_margins[processed : processed + len(batch)]
 
             margins_batch, preds_batch = _batched_margins_and_predictions(
-                model, batch, letter_token_ids, batch_size=BATCH_SIZE
+                model, batch, letter_token_ids, batch_size=BATCH_SIZE, pad_token_id=pad_token_id
             )
 
             for j, margin in enumerate(margins_batch.tolist()):
@@ -332,6 +324,9 @@ def _run_ems_for_layer(
 
     # Letter token ids for A/B/C/D predictions.
     letter_token_ids = _get_letter_token_ids(tokenizer)
+    pad_token_id = getattr(tokenizer, "pad_token_id", None)
+    if pad_token_id is None:
+        pad_token_id = getattr(tokenizer, "eos_token_id", 0)
 
     # Random baseline columns for Z-score calibration.
     all_indices = torch.arange(num_cols, device=jacobian_scores.device)
@@ -350,6 +345,7 @@ def _run_ems_for_layer(
             early_stop_mu=None,
             max_samples=stage1_samples,
             track_flips=False,
+            pad_token_id=pad_token_id,
         )
         random_mean_drops.append(mean_drop)
 
@@ -384,6 +380,7 @@ def _run_ems_for_layer(
             early_stop_sigma=sigma_rand,
             max_samples=stage1_samples,
             track_flips=False,
+            pad_token_id=pad_token_id,
         )
         if mean_drop > 0.0:
             stage1_candidates.append((int(col), mean_drop))
@@ -416,9 +413,18 @@ def _run_ems_for_layer(
             early_stop_mu=None,
             max_samples=stage2_samples,
             track_flips=True,
+            pad_token_id=pad_token_id,
         )
 
         z = (mean_drop - mu_rand) / (sigma_rand + 1e-8)
+        # One-sided p-value (positive drop direction)
+        p_value = 1 - norm.cdf(z)
+
+        # Cohen's d (effect size)
+        std_drop = float(drops.std(unbiased=False).item())
+        std_drop = max(std_drop, 1e-3)  # prevent instability
+        cohens_d = mean_drop / std_drop
+
         median_drop = float(torch.median(drops).item())
 
         result = {
@@ -427,6 +433,8 @@ def _run_ems_for_layer(
             "mean_drop": mean_drop,
             "median_drop": median_drop,
             "z_score": z,
+            "p_value": p_value,
+            "cohens_d": cohens_d,
             "flip_rate": flip_rate,
             "lethal_flip_rate": lethal_flip_rate,
         }
@@ -437,13 +445,19 @@ def _run_ems_for_layer(
             f"layer={layer_idx} column={col} "
             f"drop={mean_drop:.6f} median_drop={median_drop:.6f} Z={z:.3f} "
             f"flip={flip_rate:.4f} lethal={lethal_flip_rate:.4f}"
+            f" p={p_value:.3e} d={cohens_d:.3f}"
         )
 
         if z > Z_THRESHOLD:
             validated_anchors.append(result)
 
-    with open(f"layer_{layer_idx}_stage2_results.json", "w") as f:
-        json.dump(stage2_results, f, indent=2)
+    # Apply FDR correction (reporting only, NOT for selection)
+    if stage2_results:
+        p_values = [r["p_value"] for r in stage2_results]
+        fdr_mask = benjamini_hochberg(p_values, q=0.05)
+
+        for r, keep in zip(stage2_results, fdr_mask):
+            r["fdr_significant"] = keep
 
     # Sanity checks over Stage 2 flip statistics.
     if stage2_results:
@@ -521,7 +535,7 @@ def run_multi_anchor_ablation_sweep(
 
     print("\n=== Multi Anchor Ablation Sweep ===")
 
-    ablation_counts = [1, 2]
+    ablation_counts = [1, 4, 8, 16, 32, 48, 64]
     # Store per-ablation metrics across seeds.
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in ablation_counts
@@ -594,9 +608,6 @@ def run_multi_anchor_ablation_sweep(
         print(f"Mean accuracy: {mean_acc}")
         print(f"Mean margin: {mean_margin}")
         log_progress(f"Multi-anchor ablation count={count} mean_accuracy={mean_acc} mean_margin={mean_margin}")
-
-    with open("multi_anchor_ablation_results.json", "w") as f:
-        json.dump(sweep_results, f, indent=2)
 
 
 def run_random_neuron_ablation_baseline(
@@ -682,9 +693,6 @@ def run_random_neuron_ablation_baseline(
         print(f"Mean margin: {mean_margin}")
         log_progress(f"Random neuron ablation k={k} mean_accuracy={mean_acc} mean_margin={mean_margin}")
 
-    with open("random_neuron_ablation_results.json", "w") as f:
-        json.dump(sweep_results, f, indent=2)
-
 
 def _run_forward_no_hooks(model, input_ids, attention_mask):
     """Single forward pass with no hooks; returns logits at last position."""
@@ -710,11 +718,9 @@ def run_anchor_activation_patching_experiment(
     device = next(model.parameters()).device
     letter_token_ids = _get_letter_token_ids(tokenizer).to(device)
 
-    # Mistral: model.model.layers (no language_model wrapper)
-    backbone = getattr(model, "model", model)
-    layer_stack = backbone.layers
-    # down_proj input h has shape [batch, seq, intermediate_size]; EMS anchors are columns
-    intermediate_size = INTERMEDIATE_SIZE
+    probe = MedNSQProbe(model)
+    layer_stack = probe.layers
+    intermediate_size = probe.intermediate_size
     pad_token_id = getattr(tokenizer, "pad_token_id", None) or getattr(tokenizer, "eos_token_id", 0)
 
     adv_pairs = build_adversarial_pairs(
@@ -747,7 +753,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_save_hooks(stored: Dict[Tuple[int, int], torch.Tensor], input_ids, attention_mask):
         handles = []
         for layer_idx, cols in anchors_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _save_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -765,7 +771,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_patch_hooks(stored: Dict[Tuple[int, int], torch.Tensor], input_ids, attention_mask):
         handles = []
         for layer_idx, cols in anchors_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -854,7 +860,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_save_hooks_random(stored, input_ids, attention_mask):
         handles = []
         for layer_idx, cols in random_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _save_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -870,7 +876,7 @@ def run_anchor_activation_patching_experiment(
     def _run_with_patch_hooks_random(stored, input_ids, attention_mask):
         handles = []
         for layer_idx, cols in random_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def _patch_hook(module, input, layer=layer_idx, cols_list=cols):
                 h = input[0]
@@ -939,12 +945,10 @@ def run_attention_head_ablation_sweep(
 
     print("\n=== Attention Head Ablation Sweep ===")
 
-    # Mistral: model.model.layers; use hardcoded BioMistral architecture constants
-    backbone = getattr(model, "model", model)
-    layer_stack = backbone.layers
-
-    num_heads = NUM_ATTENTION_HEADS
-    head_dim = HEAD_DIM
+    probe = MedNSQProbe(model)
+    layer_stack = probe.layers
+    num_heads = probe.num_heads
+    head_dim = probe.head_dim
 
     sweep_results: Dict[int, Dict[str, List[float]]] = {
         k: {"accuracies": [], "margins": []} for k in k_values
@@ -965,8 +969,6 @@ def run_attention_head_ablation_sweep(
         adv_pairs = build_adversarial_pairs(
             model, tokenizer, calibration, n_calib=len(calibration)
         )
-
-        probe = MedNSQProbe(model)
 
         all_heads = [
             (layer, head) for layer in layers for head in range(num_heads)
@@ -1013,10 +1015,10 @@ def run_attention_head_ablation_sweep(
                             weight.dtype
                         ).to(weight.device)
 
-        del probe
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
+    del probe
     for k in k_values:
         accs = sweep_results[k]["accuracies"]
         margins = sweep_results[k]["margins"]
@@ -1028,9 +1030,6 @@ def run_attention_head_ablation_sweep(
         print(f"Mean accuracy: {mean_acc}")
         print(f"Mean margin: {mean_margin}")
         log_progress(f"Attention head ablation k={k} mean_accuracy={mean_acc} mean_margin={mean_margin}")
-
-    with open("attention_head_ablation_results.json", "w") as f:
-        json.dump(sweep_results, f, indent=2)
 
 
 def run_head_to_anchor_attribution(
@@ -1051,12 +1050,10 @@ def run_head_to_anchor_attribution(
     device = next(model.parameters()).device
     pad_token_id = getattr(tokenizer, "pad_token_id", None) or getattr(tokenizer, "eos_token_id", 0)
 
-    # Mistral: model.model.layers; use hardcoded BioMistral architecture constants
-    backbone = getattr(model, "model", model)
-    layer_stack = backbone.layers
-
-    num_heads = NUM_ATTENTION_HEADS
-    head_dim = HEAD_DIM
+    probe = MedNSQProbe(model)
+    layer_stack = probe.layers
+    num_heads = probe.num_heads
+    head_dim = probe.head_dim
 
     anchors_by_layer: Dict[int, List[int]] = {}
     for (layer_idx, col_idx) in anchors:
@@ -1112,7 +1109,7 @@ def run_head_to_anchor_attribution(
     ) -> None:
         handles = []
         for layer_idx, cols in anchors_by_layer.items():
-            down_proj = layer_stack[layer_idx].mlp.down_proj
+            down_proj = _get_mlp_down_proj(layer_stack[layer_idx])
 
             def capture_hook(module, input, layer=layer_idx, anchor_cols=cols):
                 h = input[0]
@@ -1183,23 +1180,38 @@ def run_head_to_anchor_attribution(
     print(f"\nResults saved to {output_path}")
 
 
+def benjamini_hochberg(p_values, q=0.05):
+    m = len(p_values)
+    sorted_indices = sorted(range(m), key=lambda i: p_values[i])
+    sorted_p = [p_values[i] for i in sorted_indices]
+
+    thresholds = [(i + 1) / m * q for i in range(m)]
+
+    passed = [False] * m
+    max_i = -1
+
+    for i in range(m):
+        if sorted_p[i] <= thresholds[i]:
+            max_i = i
+
+    if max_i >= 0:
+        for i in range(max_i + 1):
+            passed[sorted_indices[i]] = True
+
+    return passed
+
+
 def main():
     # Use device map auto-loading; seeds are handled per-run below.
     _ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     RUN_HEAD_ONLY = False
 
-    model_name = "BioMistral/BioMistral-7B"
-    layers_to_test = [10]
+    model_name = "m42-health/Llama3-Med42-8B"
+    layers_to_test = list(range(6, 20))
 
-    # Debug: minimal EMS configuration for smoke test.
-    cfg = EMSConfig(
-        calibration_size=8,
-        stage1_top_k=4,
-        stage1_samples=4,
-        stage2_top_k=2,
-        stage2_samples=6,
-    )
+    # Default experiment configuration (can be adjusted as needed).
+    cfg = EMSConfig()
 
     print("=== Experiment Configuration ===")
     print("Calibration size:", cfg.calibration_size)
@@ -1210,8 +1222,8 @@ def main():
     print("Random baseline cols:", RANDOM_BASELINE_COLS)
     print("===============================")
 
-    # Load tokenizer once (use_fast=False for Mistral compatibility).
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+    # Load tokenizer once.
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -1226,11 +1238,11 @@ def main():
             model_name,
             torch_dtype=torch.bfloat16,
             device_map="auto",
+            trust_remote_code=True,
         )
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
-        print_gpu_memory()
         print("=== Running Anchor Activation Patching Experiment ===")
         calibration_samples = load_mcq_dataset(n_total=120)
         anchors = [
@@ -1239,35 +1251,35 @@ def main():
             (8, 3977), (8, 2990), (8, 5386), (8, 3347), (8, 2069),
             (8, 1577),
         ]
-        run_anchor_activation_patching_experiment(
-            model=model,
-            tokenizer=tokenizer,
-            anchors=anchors,
-            calibration_samples=calibration_samples,
-            n_samples=6,
-        )
-        print("\n=== Per-Anchor Causal Strength ===")
-        for anchor in anchors:
-            run_anchor_activation_patching_experiment(
-                model=model,
-                tokenizer=tokenizer,
-                anchors=[anchor],
-                calibration_samples=calibration_samples,
-                n_samples=6,
-                per_anchor_report_only=True,
-            )
-        print("\n=== Head-to-Anchor Attribution ===")
-        run_head_to_anchor_attribution(
-            model=model,
-            tokenizer=tokenizer,
-            anchors=anchors,
-            calibration_samples=calibration_samples,
-            n_prompts=8,
-            layer_range=(6, 21),
-        )
+        # run_anchor_activation_patching_experiment(
+        #     model=model,
+        #     tokenizer=tokenizer,
+        #     anchors=anchors,
+        #     calibration_samples=calibration_samples,
+        #     n_samples=120,
+        # )
+        # print("\n=== Per-Anchor Causal Strength ===")
+        # for anchor in anchors:
+        #     run_anchor_activation_patching_experiment(
+        #         model=model,
+        #         tokenizer=tokenizer,
+        #         anchors=[anchor],
+        #         calibration_samples=calibration_samples,
+        #         n_samples=120,
+        #         per_anchor_report_only=True,
+        #     )
+        # print("\n=== Head-to-Anchor Attribution ===")
+        # run_head_to_anchor_attribution(
+        #     model=model,
+        #     tokenizer=tokenizer,
+        #     anchors=anchors,
+        #     calibration_samples=calibration_samples,
+        #     n_prompts=96,
+        #     layer_range=(6, 21),
+        # )
     else:
         # Sweep over multiple random seeds to test anchor stability.
-        seeds = [1]
+        seeds = [1, 2]
         checkpoint = load_checkpoint()
         if checkpoint:
             completed_seeds = list(checkpoint["completed_seeds"])
@@ -1296,11 +1308,11 @@ def main():
                 model_name,
                 torch_dtype=torch.bfloat16,
                 device_map="auto",
+                trust_remote_code=True,
             )
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
             torch.set_float32_matmul_precision("high")
-            print_gpu_memory()
 
             # Dataset split: configurable calibration size, fixed held-out evaluation size.
             eval_size = 60
@@ -1309,31 +1321,15 @@ def main():
             random.shuffle(samples)
             calibration = samples[: cfg.calibration_size]
             evaluation = samples[cfg.calibration_size : cfg.calibration_size + eval_size]
-            with open("calibration_prompts.json", "w") as f:
-                json.dump(calibration, f, indent=2)
-            with open("evaluation_prompts.json", "w") as f:
-                json.dump(evaluation, f, indent=2)
             if seed == seeds[0]:
                 calibration_reference = calibration
 
             adv_pairs = build_adversarial_pairs(
                 model, tokenizer, calibration, n_calib=len(calibration)
             )
-            adv_metadata = [
-                {
-                    "correct_index": p["correct_letter_index"],
-                    "neg_index": p["neg_letter_index"],
-                    "pos_id": p["pos_id"],
-                    "neg_id": p["neg_id"],
-                }
-                for p in adv_pairs
-            ]
-            with open("adv_pairs_metadata.json", "w") as f:
-                json.dump(adv_metadata, f, indent=2)
 
             probe = MedNSQProbe(model)
             baseline_margins_all = probe.compute_per_sample_margins(adv_pairs)
-            torch.save(baseline_margins_all, "baseline_margins.pt")
             baseline_eval = evaluate_model(model, tokenizer, evaluation)
             print("\n=== Baseline Held-out Evaluation ===")
             print("Baseline accuracy:", baseline_eval["accuracy"])
@@ -1354,8 +1350,6 @@ def main():
                     baseline_eval,
                 )
                 all_layer_summaries.append(summary)
-                with open(f"layer_{layer_idx}_results.json", "w") as f:
-                    json.dump(summary, f, indent=2)
                 num_anchors = len(summary["validated_anchors"])
                 max_drop = summary.get("max_drop", 0.0)
                 log_progress(f"Seed {seed} Layer {layer_idx} anchors={num_anchors} max_drop={max_drop:.4f}")
@@ -1390,20 +1384,16 @@ def main():
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
 
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
         # Load model once for ablation experiments (no weight modifications during ablation per seed).
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,
             device_map="auto",
+            trust_remote_code=True,
         )
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
-        print_gpu_memory()
 
         # Final EMS summary across all seeds is stored in all_seed_results.
         print("\n=== Anchor Stability Summary ===")
@@ -1421,7 +1411,7 @@ def main():
 
         # Save experiment output to JSON for reproducibility.
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        with open(f"ems_seed_sweep_{timestamp}.json", "w") as f:
+        with open(f"ems_seed_sweep_med42_clean_{timestamp}.json", "w") as f:
             json.dump(all_seed_results, f, indent=2)
 
         # Gather anchors from EMS discovery across all seeds; dedupe and keep top 64 by mean_drop.
@@ -1455,14 +1445,16 @@ def main():
             print(f"(layer={layer} col={col}) frequency={freq}/{num_seeds}")
             log_progress(f"(layer={layer} col={col}) frequency={freq}/{num_seeds}")
 
-        # Save final anchor list to anchors_final.json and append to anchors_progress.txt
+        # Save final anchor list to anchors_med42_clean.json and append to anchors_progress_med42_clean.txt
         anchors_final_data = [
             {"layer": layer, "column": col, "drop": stats["drop"], "z": stats["z"]}
             for (layer, col), stats in sorted_anchor_stats
         ]
-        with open("anchors_final.json", "w") as f:
+        with open("anchors_med42_clean.json", "w") as f:
             json.dump(anchors_final_data, f, indent=2)
-        with open("anchors_progress.txt", "a") as f:
+        print("Saved anchor list to anchors_med42_clean.json")
+        log_progress("Saved anchor list to anchors_med42_clean.json")
+        with open("anchors_progress_med42_clean.txt", "a") as f:
             f.write("--- Final anchor list ---\n")
             for (layer, column), stats in sorted_anchor_stats:
                 f.write(f"(layer={layer} col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}\n")
@@ -1473,96 +1465,76 @@ def main():
             print(f"(layer={layer}, col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
             log_progress(f"  (layer={layer}, col={column}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
 
-        print_gpu_memory()
-        print("\n=== Running Anchor Activation Patching Experiment ===")
+        # print("\n=== Running Anchor Activation Patching Experiment ===")
         calibration_samples = calibration_reference[:120]
-        run_anchor_activation_patching_experiment(
-            model=model,
-            tokenizer=tokenizer,
-            anchors=anchors,
-            calibration_samples=calibration_samples,
-            n_samples=6,
-        )
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-        print("\n=== Per-Anchor Causal Strength ===")
-        for anchor in anchors:
-            run_anchor_activation_patching_experiment(
-                model=model,
-                tokenizer=tokenizer,
-                anchors=[anchor],
-                calibration_samples=calibration_samples,
-                n_samples=6,
-                per_anchor_report_only=True,
-            )
-
-        print("\n=== Head-to-Anchor Attribution ===")
-        run_head_to_anchor_attribution(
-            model=model,
-            tokenizer=tokenizer,
-            anchors=anchors,
-            calibration_samples=calibration_samples,
-            n_prompts=8,
-            layer_range=(6, 21),
-        )
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
-        run_multi_anchor_ablation_sweep(
-            model=model,
-            tokenizer=tokenizer,
-            anchors=anchors,
-            seeds=[1, 2, 3, 4, 5],
-            calibration_size=cfg.calibration_size,
-            eval_size=60,
-        )
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
-        anchor_layers = sorted(list(set(layer for layer, _ in anchors)))
-        run_random_neuron_ablation_baseline(
-            model=model,
-            tokenizer=tokenizer,
-            layers=anchor_layers,
-            seeds=[1, 2, 3, 4, 5],
-            calibration_size=cfg.calibration_size,
-            eval_size=60,
-            k_values=[1, 2],
-        )
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
-        run_attention_head_ablation_sweep(
-            model=model,
-            tokenizer=tokenizer,
-            layers=[8, 16],
-            seeds=[1, 2, 3, 4, 5],
-            calibration_size=cfg.calibration_size,
-            eval_size=60,
-            k_values=[1],
-        )
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-        print_gpu_memory()
-
-        final_summary = {
-            "anchors": anchors_final_data,
-            "anchor_frequency": [
-                {"layer": layer, "column": col, "frequency": freq}
-                for (layer, col), freq in anchor_frequency.items()
-            ],
-            "layers_tested": layers_to_test,
-            "model": model_name,
-        }
-        with open("final_experiment_summary.json", "w") as f:
-            json.dump(final_summary, f, indent=2)
-
-        print("DEBUG RUN COMPLETE — PIPELINE VERIFIED")
+        # run_anchor_activation_patching_experiment(
+        #     model=model,
+        #     tokenizer=tokenizer,
+        #     anchors=anchors,
+        #     calibration_samples=calibration_samples,
+        #     n_samples=120,
+        # )
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
+        #     torch.cuda.synchronize()
+        # print("\n=== Per-Anchor Causal Strength ===")
+        # for anchor in anchors:
+        #     run_anchor_activation_patching_experiment(
+        #         model=model,
+        #         tokenizer=tokenizer,
+        #         anchors=[anchor],
+        #         calibration_samples=calibration_samples,
+        #         n_samples=120,
+        #         per_anchor_report_only=True,
+        #     )
+        # print("\n=== Head-to-Anchor Attribution ===")
+        # run_head_to_anchor_attribution(
+        #     model=model,
+        #     tokenizer=tokenizer,
+        #     anchors=anchors,
+        #     calibration_samples=calibration_samples,
+        #     n_prompts=96,
+        #     layer_range=(6, 21),
+        # )
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
+        #     torch.cuda.synchronize()
+        # run_multi_anchor_ablation_sweep(
+        #     model=model,
+        #     tokenizer=tokenizer,
+        #     anchors=anchors,
+        #     seeds=[1, 2, 3, 4, 5],
+        #     calibration_size=cfg.calibration_size,
+        #     eval_size=60,
+        # )
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
+        #     torch.cuda.synchronize()
+        # anchor_layers = sorted(list(set(layer for layer, _ in anchors)))
+        # run_random_neuron_ablation_baseline(
+        #     model=model,
+        #     tokenizer=tokenizer,
+        #     layers=anchor_layers,
+        #     seeds=[1, 2, 3, 4, 5],
+        #     calibration_size=cfg.calibration_size,
+        #     eval_size=60,
+        #     k_values=[1, 4, 8, 16, 32, 48, 64],
+        # )
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
+        #     torch.cuda.synchronize()
+        # run_attention_head_ablation_sweep(
+        #     model=model,
+        #     tokenizer=tokenizer,
+        #     layers=[8, 16],
+        #     seeds=[1, 2, 3, 4, 5],
+        #     calibration_size=cfg.calibration_size,
+        #     eval_size=60,
+        #     k_values=[1, 2, 4, 8],
+        # )
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
+        #     torch.cuda.synchronize()
 
 
 if __name__ == "__main__":
