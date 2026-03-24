@@ -1,0 +1,550 @@
+=== Experiment Configuration ===
+Calibration size: 800
+Stage1 top_k: 256
+Stage1 samples: 60
+Stage2 top_k: 128
+Stage2 samples: 800
+Random baseline cols: 256
+===============================
+
+===== RUNNING SEED 1 =====
+Calibration size: 800
+=== Model Dimensions ===
+hidden_size: 4096
+intermediate_size: 14336
+num_heads: 32
+head_dim: 128
+=== PROBE SANITY CHECK ===
+Layers: 32
+Weight shape: torch.Size([4096, 14336])
+Mean: -4.544854164123535e-07 Std: 0.01043701171875
+Column after crush sum: 32.75
+Jacobian sample: tensor([0.0460, 0.0210, 0.0519, 0.0769, 0.0024, 0.0651, 0.0220, 0.0514, 0.0066,
+        0.0440], device='cuda:0')
+
+=== Baseline Held-out Evaluation ===
+Baseline accuracy: 0.7833333333333333
+Baseline mean margin: 3.1841145833333333
+
+=== Processing layer 8 ===
+[DEBUG] Layer 8 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=8 num_cols=14336
+[Taylor Top20] [33.266510009765625, 18.275005340576172, 12.715784072875977, 12.081766128540039, 11.9255952835083, 11.43372917175293, 9.35028076171875, 8.277984619140625, 8.11585807800293, 7.997751235961914, 7.988357067108154, 7.965219497680664, 7.787347316741943, 7.752159118652344, 7.559388160705566, 7.1754937171936035, 7.06382417678833, 6.821002006530762, 6.61210823059082, 6.501741886138916]
+Random baseline mu_rand: 0.003932
+Random baseline sigma_rand: 0.007845
+Stage 1 retained 6 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=8 column=272 drop=0.006606 median_drop=0.000000 Z=0.341 flip=0.1825 lethal=0.1800 p=3.666e-01 d=0.046
+[Stage2] layer=8 column=2008 drop=0.002662 median_drop=0.000000 Z=-0.162 flip=0.1800 lethal=0.1775 p=5.643e-01 d=0.019
+[Stage2] layer=8 column=4075 drop=-0.000005 median_drop=0.000000 Z=-0.502 flip=0.1800 lethal=0.1787 p=6.921e-01 d=-0.000
+[Stage2] layer=8 column=418 drop=-0.005234 median_drop=0.000000 Z=-1.168 flip=0.1825 lethal=0.1800 p=8.787e-01 d=-0.037
+[Stage2] layer=8 column=9597 drop=-0.004839 median_drop=0.000000 Z=-1.118 flip=0.1812 lethal=0.1800 p=8.682e-01 d=-0.033
+[Stage2] layer=8 column=1255 drop=-0.000106 median_drop=0.000000 Z=-0.515 flip=0.1800 lethal=0.1775 p=6.966e-01 d=-0.001
+
+=== Layer Summary ===
+layer=8
+validated_anchors=0
+max_drop=0.000000
+mean_drop=0.000000
+max_Z=0.000
+
+=== Processing layer 9 ===
+[DEBUG] Layer 9 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=9 num_cols=14336
+[Taylor Top20] [35.21144104003906, 13.389507293701172, 11.100971221923828, 11.04136848449707, 10.267278671264648, 9.007351875305176, 8.093282699584961, 7.99900484085083, 7.700401782989502, 7.455934047698975, 6.952583312988281, 6.719912528991699, 6.561516761779785, 6.333162307739258, 6.321793556213379, 6.2295379638671875, 6.191951274871826, 6.113343238830566, 6.073267936706543, 5.85279655456543]
+Random baseline mu_rand: 0.003419
+Random baseline sigma_rand: 0.007850
+Stage 1 retained 7 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=9 column=4924 drop=0.009486 median_drop=0.000000 Z=0.773 flip=0.1787 lethal=0.1762 p=2.198e-01 d=0.062
+[Stage2] layer=9 column=7389 drop=0.007698 median_drop=0.000000 Z=0.545 flip=0.1800 lethal=0.1775 p=2.928e-01 d=0.053
+[Stage2] layer=9 column=1789 drop=0.005944 median_drop=0.000000 Z=0.322 flip=0.1775 lethal=0.1762 p=3.739e-01 d=0.041
+[Stage2] layer=9 column=9447 drop=0.012392 median_drop=0.000000 Z=1.143 flip=0.1800 lethal=0.1775 p=1.265e-01 d=0.089
+[Stage2] layer=9 column=3340 drop=0.008844 median_drop=0.000000 Z=0.691 flip=0.1800 lethal=0.1775 p=2.448e-01 d=0.060
+[Stage2] layer=9 column=5686 drop=-0.004225 median_drop=0.000000 Z=-0.974 flip=0.1812 lethal=0.1787 p=8.349e-01 d=-0.029
+[Stage2] layer=9 column=8879 drop=0.007085 median_drop=0.000000 Z=0.467 flip=0.1800 lethal=0.1787 p=3.203e-01 d=0.048
+
+=== Layer Summary ===
+layer=9
+validated_anchors=0
+max_drop=0.000000
+mean_drop=0.000000
+max_Z=0.000
+
+=== Processing layer 10 ===
+[DEBUG] Layer 10 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=10 num_cols=14336
+[Taylor Top20] [28.710376739501953, 13.31533145904541, 12.233650207519531, 11.948114395141602, 10.603933334350586, 9.739895820617676, 9.206327438354492, 8.848701477050781, 8.639671325683594, 8.160651206970215, 7.943700790405273, 7.355737209320068, 7.154699802398682, 6.87719202041626, 5.963502407073975, 5.838871955871582, 5.645570278167725, 5.531661510467529, 5.517086505889893, 5.516080379486084]
+Random baseline mu_rand: 0.005753
+Random baseline sigma_rand: 0.006639
+Stage 1 retained 4 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=10 column=12845 drop=0.006539 median_drop=0.000000 Z=0.119 flip=0.1775 lethal=0.1750 p=4.528e-01 d=0.046
+[Stage2] layer=10 column=3290 drop=0.009369 median_drop=0.000000 Z=0.545 flip=0.1812 lethal=0.1787 p=2.930e-01 d=0.066
+[Stage2] layer=10 column=1455 drop=-0.000164 median_drop=0.000000 Z=-0.891 flip=0.1787 lethal=0.1762 p=8.136e-01 d=-0.001
+[Stage2] layer=10 column=10394 drop=-0.000746 median_drop=0.000000 Z=-0.979 flip=0.1812 lethal=0.1787 p=8.362e-01 d=-0.005
+
+=== Layer Summary ===
+layer=10
+validated_anchors=0
+max_drop=0.000000
+mean_drop=0.000000
+max_Z=0.000
+
+=== Processing layer 11 ===
+[DEBUG] Layer 11 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=11 num_cols=14336
+[Taylor Top20] [108.00790405273438, 42.16764450073242, 13.126721382141113, 13.125642776489258, 12.398847579956055, 11.11507797241211, 10.712053298950195, 10.206945419311523, 10.156562805175781, 9.348207473754883, 9.326678276062012, 9.235666275024414, 8.87578010559082, 8.465472221374512, 7.931012153625488, 7.814508438110352, 7.189617156982422, 6.655843734741211, 6.46895694732666, 6.451785087585449]
+Random baseline mu_rand: 0.004150
+Random baseline sigma_rand: 0.005553
+Stage 1 retained 4 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=11 column=11902 drop=0.047353 median_drop=0.062500 Z=7.780 flip=0.1775 lethal=0.1750 p=3.664e-15 d=0.247
+[Stage2] layer=11 column=10768 drop=-0.001827 median_drop=0.000000 Z=-1.076 flip=0.1800 lethal=0.1775 p=8.591e-01 d=-0.013
+[Stage2] layer=11 column=7775 drop=0.002058 median_drop=0.000000 Z=-0.377 flip=0.1787 lethal=0.1775 p=6.468e-01 d=0.015
+[Stage2] layer=11 column=1092 drop=0.008181 median_drop=0.000000 Z=0.726 flip=0.1787 lethal=0.1762 p=2.339e-01 d=0.059
+
+=== Layer Summary ===
+layer=11
+validated_anchors=1
+max_drop=0.047353
+mean_drop=0.047353
+max_Z=7.780
+
+=== Processing layer 12 ===
+[DEBUG] Layer 12 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=12 num_cols=14336
+[Taylor Top20] [57.277313232421875, 49.860618591308594, 31.139385223388672, 21.161481857299805, 16.289962768554688, 15.548751831054688, 14.462925910949707, 13.57254695892334, 13.27709674835205, 13.273951530456543, 12.63119888305664, 11.626178741455078, 11.422258377075195, 10.787729263305664, 10.61880874633789, 10.19088363647461, 9.709177017211914, 9.636018753051758, 9.620182037353516, 9.196163177490234]
+Random baseline mu_rand: 0.002921
+Random baseline sigma_rand: 0.007297
+Stage 1 retained 13 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=12 column=1493 drop=0.076673 median_drop=0.062500 Z=10.107 flip=0.1812 lethal=0.1775 p=0.000e+00 d=0.340
+[Stage2] layer=12 column=2976 drop=0.022910 median_drop=0.031250 Z=2.739 flip=0.1787 lethal=0.1775 p=3.077e-03 d=0.155
+[Stage2] layer=12 column=11284 drop=0.011221 median_drop=0.023438 Z=1.138 flip=0.1800 lethal=0.1775 p=1.276e-01 d=0.079
+[Stage2] layer=12 column=1780 drop=0.017598 median_drop=0.031250 Z=2.011 flip=0.1787 lethal=0.1775 p=2.214e-02 d=0.124
+[Stage2] layer=12 column=3100 drop=0.008382 median_drop=0.000000 Z=0.748 flip=0.1787 lethal=0.1762 p=2.271e-01 d=0.059
+[Stage2] layer=12 column=6329 drop=0.012318 median_drop=0.015625 Z=1.288 flip=0.1800 lethal=0.1775 p=9.891e-02 d=0.087
+[Stage2] layer=12 column=14066 drop=-0.002828 median_drop=0.000000 Z=-0.788 flip=0.1775 lethal=0.1750 p=7.846e-01 d=-0.020
+[Stage2] layer=12 column=10372 drop=0.006225 median_drop=0.000000 Z=0.453 flip=0.1775 lethal=0.1750 p=3.253e-01 d=0.042
+[Stage2] layer=12 column=10860 drop=0.012479 median_drop=0.000000 Z=1.310 flip=0.1787 lethal=0.1762 p=9.510e-02 d=0.089
+[Stage2] layer=12 column=4236 drop=0.008874 median_drop=0.000000 Z=0.816 flip=0.1787 lethal=0.1762 p=2.073e-01 d=0.066
+[Stage2] layer=12 column=5125 drop=0.005340 median_drop=0.000000 Z=0.332 flip=0.1800 lethal=0.1775 p=3.701e-01 d=0.038
+[Stage2] layer=12 column=13780 drop=0.003703 median_drop=0.000000 Z=0.107 flip=0.1800 lethal=0.1775 p=4.573e-01 d=0.027
+[Stage2] layer=12 column=13129 drop=0.006627 median_drop=0.000000 Z=0.508 flip=0.1800 lethal=0.1775 p=3.058e-01 d=0.047
+
+=== Layer Summary ===
+layer=12
+validated_anchors=3
+max_drop=0.076673
+mean_drop=0.039060
+max_Z=10.107
+
+=== Processing layer 13 ===
+[DEBUG] Layer 13 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=13 num_cols=14336
+[Taylor Top20] [48.79887008666992, 40.29584503173828, 19.79511260986328, 14.623010635375977, 14.362512588500977, 13.667510032653809, 13.035558700561523, 12.872422218322754, 12.089414596557617, 11.966166496276855, 10.476699829101562, 9.69706916809082, 9.42007827758789, 8.98477840423584, 8.790860176086426, 8.726333618164062, 8.690403938293457, 8.307835578918457, 8.256448745727539, 8.231637954711914]
+Random baseline mu_rand: 0.000346
+Random baseline sigma_rand: 0.005020
+Stage 1 retained 11 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=13 column=2590 drop=0.053533 median_drop=0.062500 Z=10.594 flip=0.1787 lethal=0.1775 p=0.000e+00 d=0.330
+[Stage2] layer=13 column=4216 drop=0.020508 median_drop=0.031250 Z=4.016 flip=0.1762 lethal=0.1737 p=2.958e-05 d=0.130
+[Stage2] layer=13 column=4542 drop=0.026647 median_drop=0.031250 Z=5.239 flip=0.1800 lethal=0.1787 p=8.074e-08 d=0.179
+[Stage2] layer=13 column=1724 drop=0.016192 median_drop=0.023438 Z=3.156 flip=0.1800 lethal=0.1787 p=7.988e-04 d=0.115
+[Stage2] layer=13 column=8084 drop=0.007050 median_drop=0.000000 Z=1.335 flip=0.1800 lethal=0.1775 p=9.088e-02 d=0.051
+[Stage2] layer=13 column=7629 drop=0.007418 median_drop=0.000000 Z=1.409 flip=0.1800 lethal=0.1775 p=7.949e-02 d=0.052
+[Stage2] layer=13 column=1644 drop=0.006467 median_drop=0.000000 Z=1.219 flip=0.1800 lethal=0.1775 p=1.114e-01 d=0.047
+[Stage2] layer=13 column=13500 drop=0.009306 median_drop=0.000000 Z=1.785 flip=0.1800 lethal=0.1775 p=3.715e-02 d=0.067
+[Stage2] layer=13 column=7201 drop=0.006469 median_drop=0.000000 Z=1.220 flip=0.1800 lethal=0.1775 p=1.113e-01 d=0.047
+[Stage2] layer=13 column=12885 drop=0.010114 median_drop=0.015625 Z=1.946 flip=0.1800 lethal=0.1775 p=2.585e-02 d=0.071
+[Stage2] layer=13 column=7616 drop=0.009621 median_drop=0.000000 Z=1.847 flip=0.1800 lethal=0.1775 p=3.234e-02 d=0.069
+[Warning] flip_rate=0.1800 is identical across 9 columns in layer 13; check flip tracking.
+
+=== Layer Summary ===
+layer=13
+validated_anchors=4
+max_drop=0.053533
+mean_drop=0.029220
+max_Z=10.594
+
+=== Processing layer 14 ===
+[DEBUG] Layer 14 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=14 num_cols=14336
+[Taylor Top20] [78.95055389404297, 48.50840759277344, 24.563133239746094, 19.499473571777344, 11.988862991333008, 11.627998352050781, 11.098772048950195, 10.836675643920898, 10.317869186401367, 9.812002182006836, 9.718767166137695, 9.48263931274414, 9.153266906738281, 9.134950637817383, 8.919745445251465, 8.781752586364746, 8.711385726928711, 8.569753646850586, 8.321646690368652, 8.29833984375]
+Random baseline mu_rand: 0.001077
+Random baseline sigma_rand: 0.005881
+Stage 1 retained 6 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=14 column=8 drop=0.100606 median_drop=0.125000 Z=16.924 flip=0.1812 lethal=0.1787 p=0.000e+00 d=0.497
+[Stage2] layer=14 column=318 drop=0.029677 median_drop=0.031250 Z=4.863 flip=0.1812 lethal=0.1787 p=5.779e-07 d=0.200
+[Stage2] layer=14 column=12639 drop=0.023784 median_drop=0.031250 Z=3.861 flip=0.1800 lethal=0.1775 p=5.648e-05 d=0.147
+[Stage2] layer=14 column=1943 drop=0.009565 median_drop=0.007812 Z=1.443 flip=0.1800 lethal=0.1775 p=7.448e-02 d=0.067
+[Stage2] layer=14 column=534 drop=0.007365 median_drop=0.000000 Z=1.069 flip=0.1800 lethal=0.1775 p=1.425e-01 d=0.053
+[Stage2] layer=14 column=10600 drop=0.006799 median_drop=0.000000 Z=0.973 flip=0.1800 lethal=0.1775 p=1.653e-01 d=0.049
+
+=== Layer Summary ===
+layer=14
+validated_anchors=3
+max_drop=0.100606
+mean_drop=0.051356
+max_Z=16.924
+
+=== Processing layer 15 ===
+[DEBUG] Layer 15 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=15 num_cols=14336
+[Taylor Top20] [81.76538848876953, 19.511356353759766, 19.499927520751953, 18.333171844482422, 17.30936622619629, 16.45598602294922, 15.939594268798828, 15.511255264282227, 13.171746253967285, 12.446181297302246, 11.909164428710938, 11.687553405761719, 11.285053253173828, 10.933623313903809, 10.68698501586914, 9.9892578125, 9.928040504455566, 9.507098197937012, 9.297990798950195, 8.586491584777832]
+Random baseline mu_rand: 0.001599
+Random baseline sigma_rand: 0.004651
+Stage 1 retained 11 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=15 column=1706 drop=0.025363 median_drop=0.031250 Z=5.109 flip=0.1800 lethal=0.1787 p=1.619e-07 d=0.181
+[Stage2] layer=15 column=11853 drop=0.023159 median_drop=0.031250 Z=4.635 flip=0.1800 lethal=0.1775 p=1.784e-06 d=0.164
+[Stage2] layer=15 column=1283 drop=0.021851 median_drop=0.031250 Z=4.354 flip=0.1800 lethal=0.1787 p=6.682e-06 d=0.153
+[Stage2] layer=15 column=2808 drop=0.026100 median_drop=0.031250 Z=5.267 flip=0.1800 lethal=0.1775 p=6.916e-08 d=0.180
+[Stage2] layer=15 column=2298 drop=0.008680 median_drop=0.007812 Z=1.522 flip=0.1800 lethal=0.1775 p=6.396e-02 d=0.061
+[Stage2] layer=15 column=10378 drop=0.007737 median_drop=0.000000 Z=1.320 flip=0.1800 lethal=0.1775 p=9.346e-02 d=0.054
+[Stage2] layer=15 column=10813 drop=0.016129 median_drop=0.031250 Z=3.124 flip=0.1800 lethal=0.1775 p=8.928e-04 d=0.114
+[Stage2] layer=15 column=6589 drop=0.013246 median_drop=0.015625 Z=2.504 flip=0.1800 lethal=0.1787 p=6.137e-03 d=0.093
+[Stage2] layer=15 column=12238 drop=0.005471 median_drop=0.000000 Z=0.832 flip=0.1800 lethal=0.1775 p=2.026e-01 d=0.039
+[Stage2] layer=15 column=13953 drop=0.002852 median_drop=0.000000 Z=0.270 flip=0.1800 lethal=0.1775 p=3.938e-01 d=0.021
+[Stage2] layer=15 column=2295 drop=0.011011 median_drop=0.015625 Z=2.024 flip=0.1800 lethal=0.1775 p=2.150e-02 d=0.080
+[Warning] flip_rate=0.1800 is identical across 11 columns in layer 15; check flip tracking.
+
+=== Layer Summary ===
+layer=15
+validated_anchors=7
+max_drop=0.026100
+mean_drop=0.019551
+max_Z=5.267
+
+=== Processing layer 16 ===
+[DEBUG] Layer 16 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=16 num_cols=14336
+[Taylor Top20] [44.821937561035156, 44.16361999511719, 28.303386688232422, 24.32522201538086, 24.296039581298828, 23.31570816040039, 19.4754638671875, 14.278897285461426, 14.263191223144531, 12.972301483154297, 12.562843322753906, 12.329549789428711, 11.992473602294922, 11.124734878540039, 10.257554054260254, 9.535041809082031, 9.46630859375, 9.449371337890625, 8.70221996307373, 8.576959609985352]
+Random baseline mu_rand: 0.000373
+Random baseline sigma_rand: 0.004460
+Stage 1 retained 7 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=16 column=8902 drop=0.018145 median_drop=0.031250 Z=3.985 flip=0.1800 lethal=0.1787 p=3.373e-05 d=0.129
+[Stage2] layer=16 column=9215 drop=0.032381 median_drop=0.031250 Z=7.177 flip=0.1800 lethal=0.1775 p=3.563e-13 d=0.226
+[Stage2] layer=16 column=13791 drop=0.019221 median_drop=0.031250 Z=4.226 flip=0.1800 lethal=0.1787 p=1.188e-05 d=0.135
+[Stage2] layer=16 column=10142 drop=0.012590 median_drop=0.015625 Z=2.739 flip=0.1800 lethal=0.1775 p=3.078e-03 d=0.090
+[Stage2] layer=16 column=6737 drop=0.012922 median_drop=0.015625 Z=2.814 flip=0.1800 lethal=0.1775 p=2.448e-03 d=0.091
+[Stage2] layer=16 column=5287 drop=0.007778 median_drop=0.000000 Z=1.660 flip=0.1800 lethal=0.1775 p=4.841e-02 d=0.056
+[Stage2] layer=16 column=14261 drop=0.002308 median_drop=0.000000 Z=0.434 flip=0.1800 lethal=0.1775 p=3.322e-01 d=0.017
+[Warning] flip_rate=0.1800 is identical across 7 columns in layer 16; check flip tracking.
+
+=== Layer Summary ===
+layer=16
+validated_anchors=5
+max_drop=0.032381
+mean_drop=0.019052
+max_Z=7.177
+
+=== Processing layer 17 ===
+[DEBUG] Layer 17 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=17 num_cols=14336
+[Taylor Top20] [44.11524200439453, 38.361289978027344, 26.023624420166016, 24.04322052001953, 19.35252571105957, 17.7591495513916, 16.179670333862305, 14.603466987609863, 14.03372859954834, 13.997702598571777, 13.05750846862793, 12.691527366638184, 10.132216453552246, 10.10555648803711, 10.019094467163086, 9.922211647033691, 9.052011489868164, 8.939319610595703, 8.777660369873047, 8.690031051635742]
+Random baseline mu_rand: 0.001809
+Random baseline sigma_rand: 0.004538
+Stage 1 retained 15 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=17 column=7522 drop=0.057077 median_drop=0.062500 Z=12.180 flip=0.1800 lethal=0.1787 p=0.000e+00 d=0.374
+[Stage2] layer=17 column=13385 drop=0.025713 median_drop=0.031250 Z=5.268 flip=0.1800 lethal=0.1775 p=6.901e-08 d=0.183
+[Stage2] layer=17 column=10284 drop=0.019319 median_drop=0.031250 Z=3.859 flip=0.1800 lethal=0.1775 p=5.695e-05 d=0.137
+[Stage2] layer=17 column=8887 drop=0.013873 median_drop=0.015625 Z=2.659 flip=0.1800 lethal=0.1787 p=3.924e-03 d=0.101
+[Stage2] layer=17 column=11161 drop=0.008906 median_drop=0.000000 Z=1.564 flip=0.1800 lethal=0.1787 p=5.892e-02 d=0.065
+[Stage2] layer=17 column=8392 drop=0.005212 median_drop=0.000000 Z=0.750 flip=0.1800 lethal=0.1775 p=2.267e-01 d=0.037
+[Stage2] layer=17 column=7104 drop=0.007324 median_drop=0.000000 Z=1.215 flip=0.1800 lethal=0.1775 p=1.121e-01 d=0.052
+[Stage2] layer=17 column=9243 drop=0.005324 median_drop=0.000000 Z=0.775 flip=0.1800 lethal=0.1775 p=2.193e-01 d=0.038
+[Stage2] layer=17 column=12724 drop=0.007644 median_drop=0.000000 Z=1.286 flip=0.1800 lethal=0.1787 p=9.924e-02 d=0.056
+[Stage2] layer=17 column=10384 drop=0.005364 median_drop=0.000000 Z=0.783 flip=0.1800 lethal=0.1775 p=2.167e-01 d=0.039
+[Stage2] layer=17 column=10442 drop=0.004267 median_drop=0.000000 Z=0.542 flip=0.1800 lethal=0.1775 p=2.940e-01 d=0.031
+[Stage2] layer=17 column=2961 drop=0.007062 median_drop=0.000000 Z=1.158 flip=0.1800 lethal=0.1787 p=1.235e-01 d=0.051
+[Stage2] layer=17 column=8931 drop=0.004395 median_drop=0.000000 Z=0.570 flip=0.1800 lethal=0.1775 p=2.844e-01 d=0.032
+[Stage2] layer=17 column=12694 drop=0.004335 median_drop=0.000000 Z=0.557 flip=0.1800 lethal=0.1787 p=2.889e-01 d=0.031
+[Stage2] layer=17 column=863 drop=0.011159 median_drop=0.015625 Z=2.061 flip=0.1800 lethal=0.1775 p=1.967e-02 d=0.080
+[Warning] flip_rate=0.1800 is identical across 15 columns in layer 17; check flip tracking.
+
+=== Layer Summary ===
+layer=17
+validated_anchors=5
+max_drop=0.057077
+mean_drop=0.025428
+max_Z=12.180
+
+=== Processing layer 18 ===
+[DEBUG] Layer 18 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=18 num_cols=14336
+[Taylor Top20] [35.08637237548828, 25.609722137451172, 23.064891815185547, 12.910390853881836, 11.482719421386719, 11.298866271972656, 9.30050277709961, 8.706944465637207, 8.082429885864258, 8.08181381225586, 7.762369155883789, 7.661284446716309, 7.516406536102295, 7.458698272705078, 7.430231094360352, 7.41978645324707, 7.419661045074463, 7.365643501281738, 6.859519958496094, 6.840240955352783]
+Random baseline mu_rand: 0.002610
+Random baseline sigma_rand: 0.004396
+Stage 1 retained 5 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=18 column=7417 drop=0.047753 median_drop=0.062500 Z=10.269 flip=0.1825 lethal=0.1812 p=0.000e+00 d=0.265
+[Stage2] layer=18 column=10857 drop=0.029783 median_drop=0.031250 Z=6.181 flip=0.1787 lethal=0.1775 p=3.175e-10 d=0.190
+[Stage2] layer=18 column=2694 drop=0.032621 median_drop=0.031250 Z=6.827 flip=0.1812 lethal=0.1787 p=4.332e-12 d=0.219
+[Stage2] layer=18 column=6203 drop=0.006246 median_drop=0.000000 Z=0.827 flip=0.1800 lethal=0.1775 p=2.041e-01 d=0.045
+[Stage2] layer=18 column=8527 drop=0.010523 median_drop=0.000000 Z=1.800 flip=0.1800 lethal=0.1787 p=3.593e-02 d=0.076
+
+=== Layer Summary ===
+layer=18
+validated_anchors=3
+max_drop=0.047753
+mean_drop=0.036719
+max_Z=10.269
+
+=== Processing layer 19 ===
+[DEBUG] Layer 19 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=19 num_cols=14336
+[Taylor Top20] [93.36235046386719, 24.153165817260742, 23.692792892456055, 20.32326316833496, 13.857221603393555, 13.855853080749512, 13.626514434814453, 11.548977851867676, 10.412010192871094, 9.52995491027832, 8.706742286682129, 8.620695114135742, 8.096399307250977, 7.52885103225708, 7.290341377258301, 7.28275728225708, 7.27964973449707, 7.163628578186035, 7.130450248718262, 6.866899013519287]
+Random baseline mu_rand: 0.003310
+Random baseline sigma_rand: 0.004292
+Stage 1 retained 8 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=19 column=7232 drop=0.114273 median_drop=0.109375 Z=25.853 flip=0.1800 lethal=0.1787 p=0.000e+00 d=0.582
+[Stage2] layer=19 column=9770 drop=0.019025 median_drop=0.031250 Z=3.661 flip=0.1800 lethal=0.1787 p=1.254e-04 d=0.134
+[Stage2] layer=19 column=1498 drop=0.018034 median_drop=0.015625 Z=3.431 flip=0.1800 lethal=0.1775 p=3.011e-04 d=0.127
+[Stage2] layer=19 column=2800 drop=0.004041 median_drop=0.000000 Z=0.170 flip=0.1800 lethal=0.1775 p=4.323e-01 d=0.029
+[Stage2] layer=19 column=7889 drop=0.009296 median_drop=0.000000 Z=1.395 flip=0.1787 lethal=0.1775 p=8.154e-02 d=0.065
+[Stage2] layer=19 column=13874 drop=0.005367 median_drop=0.000000 Z=0.479 flip=0.1800 lethal=0.1775 p=3.159e-01 d=0.039
+[Stage2] layer=19 column=6564 drop=0.003512 median_drop=0.000000 Z=0.047 flip=0.1800 lethal=0.1787 p=4.812e-01 d=0.025
+[Stage2] layer=19 column=12164 drop=0.004622 median_drop=0.000000 Z=0.306 flip=0.1800 lethal=0.1775 p=3.799e-01 d=0.033
+[Warning] flip_rate=0.1800 is identical across 7 columns in layer 19; check flip tracking.
+
+=== Layer Summary ===
+layer=19
+validated_anchors=3
+max_drop=0.114273
+mean_drop=0.050444
+max_Z=25.853
+
+=== Processing layer 20 ===
+[DEBUG] Layer 20 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=20 num_cols=14336
+[Taylor Top20] [79.58992004394531, 29.493141174316406, 25.217914581298828, 16.091135025024414, 15.000667572021484, 14.501243591308594, 13.987194061279297, 11.361385345458984, 10.521587371826172, 9.93889045715332, 9.15439224243164, 8.88803768157959, 8.801287651062012, 8.658133506774902, 8.257305145263672, 8.202903747558594, 8.12928581237793, 8.058658599853516, 7.618843078613281, 7.412924766540527]
+Random baseline mu_rand: 0.003235
+Random baseline sigma_rand: 0.003534
+Stage 1 retained 11 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=20 column=4299 drop=0.100329 median_drop=0.062500 Z=27.475 flip=0.1787 lethal=0.1762 p=0.000e+00 d=0.377
+[Stage2] layer=20 column=5270 drop=0.017781 median_drop=0.031250 Z=4.116 flip=0.1787 lethal=0.1762 p=1.925e-05 d=0.114
+[Stage2] layer=20 column=3476 drop=0.033881 median_drop=0.031250 Z=8.672 flip=0.1800 lethal=0.1787 p=0.000e+00 d=0.235
+[Stage2] layer=20 column=10638 drop=0.021092 median_drop=0.031250 Z=5.053 flip=0.1800 lethal=0.1787 p=2.174e-07 d=0.149
+[Stage2] layer=20 column=2786 drop=0.012717 median_drop=0.015625 Z=2.683 flip=0.1800 lethal=0.1787 p=3.647e-03 d=0.092
+[Stage2] layer=20 column=12564 drop=0.007914 median_drop=0.000000 Z=1.324 flip=0.1787 lethal=0.1762 p=9.272e-02 d=0.056
+[Stage2] layer=20 column=2673 drop=0.005757 median_drop=0.000000 Z=0.714 flip=0.1787 lethal=0.1762 p=2.377e-01 d=0.041
+[Stage2] layer=20 column=1404 drop=0.008203 median_drop=0.000000 Z=1.406 flip=0.1800 lethal=0.1775 p=7.990e-02 d=0.059
+[Stage2] layer=20 column=9709 drop=0.004835 median_drop=0.000000 Z=0.453 flip=0.1800 lethal=0.1775 p=3.254e-01 d=0.035
+[Stage2] layer=20 column=3847 drop=0.005887 median_drop=0.000000 Z=0.750 flip=0.1800 lethal=0.1787 p=2.265e-01 d=0.042
+[Stage2] layer=20 column=9108 drop=-0.002733 median_drop=0.000000 Z=-1.689 flip=0.1800 lethal=0.1787 p=9.544e-01 d=-0.020
+[Warning] flip_rate=0.1800 is identical across 7 columns in layer 20; check flip tracking.
+
+=== Layer Summary ===
+layer=20
+validated_anchors=5
+max_drop=0.100329
+mean_drop=0.037160
+max_Z=27.475
+
+=== Processing layer 21 ===
+[DEBUG] Layer 21 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=21 num_cols=14336
+[Taylor Top20] [25.629037857055664, 18.228771209716797, 12.732625961303711, 10.688213348388672, 10.138137817382812, 9.493226051330566, 8.307624816894531, 8.227450370788574, 8.154372215270996, 8.042094230651855, 7.831636905670166, 7.389913082122803, 7.123908519744873, 7.085223197937012, 7.011898040771484, 6.800763130187988, 6.581692695617676, 6.554840087890625, 6.303249835968018, 6.176758766174316]
+Random baseline mu_rand: 0.003158
+Random baseline sigma_rand: 0.003458
+Stage 1 retained 5 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=21 column=1103 drop=0.006564 median_drop=0.000000 Z=0.985 flip=0.1800 lethal=0.1787 p=1.623e-01 d=0.046
+[Stage2] layer=21 column=9427 drop=0.009650 median_drop=0.000000 Z=1.878 flip=0.1800 lethal=0.1787 p=3.022e-02 d=0.067
+[Stage2] layer=21 column=4722 drop=0.010048 median_drop=0.000000 Z=1.992 flip=0.1800 lethal=0.1775 p=2.316e-02 d=0.072
+[Stage2] layer=21 column=12159 drop=0.004064 median_drop=0.000000 Z=0.262 flip=0.1800 lethal=0.1787 p=3.966e-01 d=0.029
+[Stage2] layer=21 column=2337 drop=0.006291 median_drop=0.000000 Z=0.906 flip=0.1800 lethal=0.1787 p=1.825e-01 d=0.045
+
+=== Layer Summary ===
+layer=21
+validated_anchors=0
+max_drop=0.000000
+mean_drop=0.000000
+max_Z=0.000
+
+=== Seed Summary ===
+seed=1
+layer8 anchors=0
+layer9 anchors=0
+layer10 anchors=0
+layer11 anchors=1
+layer12 anchors=3
+layer13 anchors=4
+layer14 anchors=3
+layer15 anchors=7
+layer16 anchors=5
+layer17 anchors=5
+layer18 anchors=3
+layer19 anchors=3
+layer20 anchors=5
+layer21 anchors=0
+
+===== RUNNING SEED 2 =====
+Calibration size: 800
+=== Model Dimensions ===
+hidden_size: 4096
+intermediate_size: 14336
+num_heads: 32
+head_dim: 128
+=== PROBE SANITY CHECK ===
+Layers: 32
+Weight shape: torch.Size([4096, 14336])
+Mean: -4.544854164123535e-07 Std: 0.01043701171875
+Column after crush sum: 32.75
+Jacobian sample: tensor([0.1104, 0.0053, 0.0746, 0.1636, 0.0571, 0.0964, 0.0090, 0.0011, 0.0045,
+        0.0026], device='cuda:0')
+
+=== Baseline Held-out Evaluation ===
+Baseline accuracy: 0.9
+Baseline mean margin: 3.481640625
+
+=== Processing layer 8 ===
+[DEBUG] Layer 8 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=8 num_cols=14336
+[Taylor Top20] [31.162580490112305, 17.289535522460938, 12.977916717529297, 12.360092163085938, 11.195682525634766, 10.635702133178711, 9.662895202636719, 8.98343276977539, 8.41341781616211, 8.30053424835205, 8.028326034545898, 7.7740397453308105, 7.598552227020264, 7.514595031738281, 7.461411476135254, 7.239113807678223, 7.049619674682617, 6.842450141906738, 6.702169418334961, 6.658483505249023]
+Random baseline mu_rand: 0.018367
+Random baseline sigma_rand: 0.006996
+Stage 1 retained 128 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=8 column=8694 drop=0.017324 median_drop=0.015625 Z=-0.149 flip=0.1888 lethal=0.1875 p=5.593e-01 d=0.125
+[Stage2] layer=8 column=6811 drop=0.006473 median_drop=0.000000 Z=-1.700 flip=0.1900 lethal=0.1875 p=9.554e-01 d=0.042
+[Stage2] layer=8 column=12837 drop=0.006386 median_drop=0.000000 Z=-1.713 flip=0.1888 lethal=0.1850 p=9.566e-01 d=0.043
+[Stage2] layer=8 column=4030 drop=0.011572 median_drop=0.015625 Z=-0.971 flip=0.1862 lethal=0.1837 p=8.343e-01 d=0.083
+[Stage2] layer=8 column=12974 drop=0.001934 median_drop=0.000000 Z=-2.349 flip=0.1888 lethal=0.1875 p=9.906e-01 d=0.014
+[Stage2] layer=8 column=5990 drop=0.004927 median_drop=0.000000 Z=-1.921 flip=0.1875 lethal=0.1850 p=9.726e-01 d=0.034
+[Stage2] layer=8 column=4061 drop=0.004349 median_drop=0.000000 Z=-2.004 flip=0.1875 lethal=0.1862 p=9.774e-01 d=0.030
+[Stage2] layer=8 column=7991 drop=0.007531 median_drop=0.000000 Z=-1.549 flip=0.1888 lethal=0.1862 p=9.393e-01 d=0.056
+[Stage2] layer=8 column=4075 drop=-0.002554 median_drop=0.000000 Z=-2.990 flip=0.1875 lethal=0.1862 p=9.986e-01 d=-0.016
+[Stage2] layer=8 column=8179 drop=0.006452 median_drop=0.000000 Z=-1.703 flip=0.1875 lethal=0.1862 p=9.557e-01 d=0.044
+[Stage2] layer=8 column=12691 drop=0.002103 median_drop=0.000000 Z=-2.325 flip=0.1875 lethal=0.1850 p=9.900e-01 d=0.014
+[Stage2] layer=8 column=4334 drop=0.009913 median_drop=0.000000 Z=-1.208 flip=0.1875 lethal=0.1862 p=8.866e-01 d=0.071
+[Stage2] layer=8 column=9264 drop=0.000288 median_drop=0.000000 Z=-2.584 flip=0.1862 lethal=0.1837 p=9.951e-01 d=0.002
+[Stage2] layer=8 column=10692 drop=0.003380 median_drop=0.000000 Z=-2.142 flip=0.1888 lethal=0.1862 p=9.839e-01 d=0.023
+[Stage2] layer=8 column=8176 drop=0.011361 median_drop=0.015625 Z=-1.001 flip=0.1900 lethal=0.1875 p=8.417e-01 d=0.075
+[Stage2] layer=8 column=7457 drop=0.001140 median_drop=0.000000 Z=-2.462 flip=0.1862 lethal=0.1837 p=9.931e-01 d=0.008
+[Stage2] layer=8 column=1166 drop=0.000930 median_drop=0.000000 Z=-2.492 flip=0.1900 lethal=0.1888 p=9.937e-01 d=0.007
+[Stage2] layer=8 column=4288 drop=-0.003589 median_drop=0.000000 Z=-3.138 flip=0.1875 lethal=0.1850 p=9.992e-01 d=-0.025
+[Stage2] layer=8 column=13251 drop=0.010439 median_drop=0.015625 Z=-1.133 flip=0.1875 lethal=0.1850 p=8.714e-01 d=0.075
+[Stage2] layer=8 column=1514 drop=0.004805 median_drop=0.000000 Z=-1.939 flip=0.1850 lethal=0.1837 p=9.737e-01 d=0.034
+[Stage2] layer=8 column=5785 drop=0.003778 median_drop=0.000000 Z=-2.085 flip=0.1875 lethal=0.1875 p=9.815e-01 d=0.026
+[Stage2] layer=8 column=12115 drop=0.002250 median_drop=0.000000 Z=-2.304 flip=0.1875 lethal=0.1850 p=9.894e-01 d=0.015
+[Stage2] layer=8 column=8590 drop=-0.003089 median_drop=0.000000 Z=-3.067 flip=0.1888 lethal=0.1862 p=9.989e-01 d=-0.019
+[Stage2] layer=8 column=3203 drop=0.004501 median_drop=0.000000 Z=-1.982 flip=0.1900 lethal=0.1875 p=9.763e-01 d=0.032
+[Stage2] layer=8 column=11863 drop=0.002244 median_drop=0.000000 Z=-2.305 flip=0.1888 lethal=0.1875 p=9.894e-01 d=0.016
+[Stage2] layer=8 column=272 drop=0.006733 median_drop=0.000000 Z=-1.663 flip=0.1913 lethal=0.1888 p=9.518e-01 d=0.047
+[Stage2] layer=8 column=13945 drop=0.002603 median_drop=0.000000 Z=-2.253 flip=0.1862 lethal=0.1837 p=9.879e-01 d=0.018
+[Stage2] layer=8 column=10852 drop=-0.007280 median_drop=0.000000 Z=-3.666 flip=0.1875 lethal=0.1850 p=9.999e-01 d=-0.049
+[Stage2] layer=8 column=12907 drop=0.004244 median_drop=0.000000 Z=-2.019 flip=0.1875 lethal=0.1850 p=9.782e-01 d=0.030
+[Stage2] layer=8 column=8876 drop=0.003863 median_drop=0.000000 Z=-2.073 flip=0.1900 lethal=0.1875 p=9.809e-01 d=0.028
+[Stage2] layer=8 column=1157 drop=0.001369 median_drop=0.000000 Z=-2.430 flip=0.1888 lethal=0.1862 p=9.924e-01 d=0.010
+[Stage2] layer=8 column=14255 drop=0.001265 median_drop=0.000000 Z=-2.445 flip=0.1875 lethal=0.1862 p=9.927e-01 d=0.009
+[Stage2] layer=8 column=9838 drop=0.007516 median_drop=0.000000 Z=-1.551 flip=0.1875 lethal=0.1862 p=9.396e-01 d=0.053
+[Stage2] layer=8 column=7647 drop=0.004992 median_drop=0.000000 Z=-1.912 flip=0.1862 lethal=0.1850 p=9.720e-01 d=0.032
+[Stage2] layer=8 column=2368 drop=-0.003110 median_drop=0.000000 Z=-3.070 flip=0.1875 lethal=0.1875 p=9.989e-01 d=-0.022
+[Stage2] layer=8 column=11441 drop=0.002461 median_drop=0.000000 Z=-2.274 flip=0.1875 lethal=0.1850 p=9.885e-01 d=0.018
+[Stage2] layer=8 column=11351 drop=0.002773 median_drop=0.000000 Z=-2.229 flip=0.1875 lethal=0.1862 p=9.871e-01 d=0.020
+[Stage2] layer=8 column=1255 drop=-0.001630 median_drop=0.000000 Z=-2.858 flip=0.1888 lethal=0.1862 p=9.979e-01 d=-0.011
+[Stage2] layer=8 column=2511 drop=-0.005049 median_drop=0.000000 Z=-3.347 flip=0.1862 lethal=0.1837 p=9.996e-01 d=-0.034
+[Stage2] layer=8 column=7427 drop=0.004266 median_drop=0.000000 Z=-2.016 flip=0.1900 lethal=0.1888 p=9.781e-01 d=0.030
+[Stage2] layer=8 column=7091 drop=-0.007904 median_drop=0.000000 Z=-3.755 flip=0.1862 lethal=0.1837 p=9.999e-01 d=-0.058
+[Stage2] layer=8 column=5981 drop=0.007060 median_drop=0.000000 Z=-1.616 flip=0.1875 lethal=0.1850 p=9.470e-01 d=0.050
+[Stage2] layer=8 column=2708 drop=0.002744 median_drop=0.000000 Z=-2.233 flip=0.1875 lethal=0.1875 p=9.872e-01 d=0.019
+[Stage2] layer=8 column=9001 drop=0.001385 median_drop=0.000000 Z=-2.427 flip=0.1888 lethal=0.1862 p=9.924e-01 d=0.010
+[Stage2] layer=8 column=9461 drop=-0.002733 median_drop=0.000000 Z=-3.016 flip=0.1875 lethal=0.1850 p=9.987e-01 d=-0.019
+[Stage2] layer=8 column=874 drop=0.001295 median_drop=0.000000 Z=-2.440 flip=0.1875 lethal=0.1862 p=9.927e-01 d=0.009
+[Stage2] layer=8 column=5988 drop=0.006393 median_drop=0.000000 Z=-1.712 flip=0.1888 lethal=0.1875 p=9.565e-01 d=0.047
+[Stage2] layer=8 column=8138 drop=0.001712 median_drop=0.000000 Z=-2.381 flip=0.1862 lethal=0.1837 p=9.914e-01 d=0.011
+[Stage2] layer=8 column=1245 drop=-0.003553 median_drop=0.000000 Z=-3.133 flip=0.1888 lethal=0.1875 p=9.991e-01 d=-0.025
+[Stage2] layer=8 column=11037 drop=0.003856 median_drop=0.000000 Z=-2.074 flip=0.1862 lethal=0.1850 p=9.810e-01 d=0.028
+[Stage2] layer=8 column=9812 drop=-0.006143 median_drop=0.000000 Z=-3.503 flip=0.1875 lethal=0.1850 p=9.998e-01 d=-0.041
+[Stage2] layer=8 column=8112 drop=0.006192 median_drop=0.000000 Z=-1.740 flip=0.1862 lethal=0.1837 p=9.591e-01 d=0.046
+[Stage2] layer=8 column=10176 drop=0.000422 median_drop=0.000000 Z=-2.565 flip=0.1888 lethal=0.1862 p=9.948e-01 d=0.003
+[Stage2] layer=8 column=10732 drop=0.000314 median_drop=0.000000 Z=-2.580 flip=0.1875 lethal=0.1850 p=9.951e-01 d=0.002
+[Stage2] layer=8 column=2498 drop=0.004225 median_drop=0.000000 Z=-2.021 flip=0.1850 lethal=0.1825 p=9.784e-01 d=0.028
+[Stage2] layer=8 column=382 drop=-0.001009 median_drop=0.000000 Z=-2.769 flip=0.1862 lethal=0.1850 p=9.972e-01 d=-0.007
+[Stage2] layer=8 column=6736 drop=0.005925 median_drop=0.000000 Z=-1.778 flip=0.1888 lethal=0.1862 p=9.623e-01 d=0.040
+[Stage2] layer=8 column=1593 drop=-0.002766 median_drop=0.000000 Z=-3.021 flip=0.1875 lethal=0.1850 p=9.987e-01 d=-0.018
+[Stage2] layer=8 column=753 drop=-0.002403 median_drop=0.000000 Z=-2.969 flip=0.1862 lethal=0.1837 p=9.985e-01 d=-0.016
+[Stage2] layer=8 column=9131 drop=-0.005925 median_drop=0.000000 Z=-3.472 flip=0.1875 lethal=0.1850 p=9.997e-01 d=-0.042
+[Stage2] layer=8 column=6141 drop=-0.002331 median_drop=0.000000 Z=-2.958 flip=0.1862 lethal=0.1850 p=9.985e-01 d=-0.016
+[Stage2] layer=8 column=1947 drop=0.002153 median_drop=0.000000 Z=-2.318 flip=0.1850 lethal=0.1837 p=9.898e-01 d=0.015
+[Stage2] layer=8 column=6284 drop=-0.000258 median_drop=0.000000 Z=-2.662 flip=0.1875 lethal=0.1850 p=9.961e-01 d=-0.002
+[Stage2] layer=8 column=6501 drop=-0.005622 median_drop=0.000000 Z=-3.429 flip=0.1875 lethal=0.1850 p=9.997e-01 d=-0.038
+[Stage2] layer=8 column=1901 drop=0.003469 median_drop=0.000000 Z=-2.129 flip=0.1888 lethal=0.1862 p=9.834e-01 d=0.026
+[Stage2] layer=8 column=10690 drop=-0.008165 median_drop=0.000000 Z=-3.792 flip=0.1888 lethal=0.1862 p=9.999e-01 d=-0.056
+[Stage2] layer=8 column=8573 drop=0.004861 median_drop=0.000000 Z=-1.930 flip=0.1888 lethal=0.1862 p=9.732e-01 d=0.032
+[Stage2] layer=8 column=10563 drop=0.004479 median_drop=0.000000 Z=-1.985 flip=0.1888 lethal=0.1862 p=9.764e-01 d=0.030
+[Stage2] layer=8 column=4803 drop=0.001595 median_drop=0.000000 Z=-2.397 flip=0.1900 lethal=0.1888 p=9.917e-01 d=0.011
+[Stage2] layer=8 column=3198 drop=-0.004941 median_drop=0.000000 Z=-3.331 flip=0.1888 lethal=0.1862 p=9.996e-01 d=-0.033
+[Stage2] layer=8 column=9188 drop=0.004024 median_drop=0.000000 Z=-2.050 flip=0.1888 lethal=0.1875 p=9.798e-01 d=0.028
+[Stage2] layer=8 column=10356 drop=0.000933 median_drop=0.000000 Z=-2.492 flip=0.1900 lethal=0.1875 p=9.936e-01 d=0.007
+[Stage2] layer=8 column=9933 drop=-0.000651 median_drop=0.000000 Z=-2.718 flip=0.1875 lethal=0.1850 p=9.967e-01 d=-0.004
+[Stage2] layer=8 column=9547 drop=-0.002461 median_drop=0.000000 Z=-2.977 flip=0.1888 lethal=0.1862 p=9.985e-01 d=-0.017
+[Stage2] layer=8 column=3816 drop=-0.004133 median_drop=0.000000 Z=-3.216 flip=0.1913 lethal=0.1888 p=9.993e-01 d=-0.029
+[Stage2] layer=8 column=13545 drop=0.003635 median_drop=0.000000 Z=-2.106 flip=0.1900 lethal=0.1888 p=9.824e-01 d=0.024
+[Stage2] layer=8 column=2548 drop=0.009633 median_drop=0.015625 Z=-1.248 flip=0.1875 lethal=0.1850 p=8.941e-01 d=0.065
+[Stage2] layer=8 column=9707 drop=0.005826 median_drop=0.000000 Z=-1.792 flip=0.1862 lethal=0.1825 p=9.635e-01 d=0.042
+[Stage2] layer=8 column=10006 drop=-0.006770 median_drop=0.000000 Z=-3.593 flip=0.1875 lethal=0.1850 p=9.998e-01 d=-0.048
+[Stage2] layer=8 column=13412 drop=-0.000587 median_drop=0.000000 Z=-2.709 flip=0.1888 lethal=0.1875 p=9.966e-01 d=-0.004
+[Stage2] layer=8 column=5360 drop=-0.002703 median_drop=0.000000 Z=-3.012 flip=0.1900 lethal=0.1875 p=9.987e-01 d=-0.018
+[Stage2] layer=8 column=7904 drop=-0.002121 median_drop=0.000000 Z=-2.928 flip=0.1850 lethal=0.1837 p=9.983e-01 d=-0.015
+[Stage2] layer=8 column=10468 drop=0.005591 median_drop=0.000000 Z=-1.826 flip=0.1900 lethal=0.1888 p=9.661e-01 d=0.039
+[Stage2] layer=8 column=569 drop=-0.001052 median_drop=0.000000 Z=-2.776 flip=0.1900 lethal=0.1875 p=9.972e-01 d=-0.007
+[Stage2] layer=8 column=12404 drop=-0.002018 median_drop=0.000000 Z=-2.914 flip=0.1888 lethal=0.1862 p=9.982e-01 d=-0.013
+[Stage2] layer=8 column=13359 drop=0.003132 median_drop=0.000000 Z=-2.178 flip=0.1900 lethal=0.1875 p=9.853e-01 d=0.022
+[Stage2] layer=8 column=13807 drop=-0.004949 median_drop=0.000000 Z=-3.333 flip=0.1888 lethal=0.1862 p=9.996e-01 d=-0.035
+[Stage2] layer=8 column=836 drop=0.002205 median_drop=0.000000 Z=-2.310 flip=0.1900 lethal=0.1875 p=9.896e-01 d=0.015
+[Stage2] layer=8 column=5525 drop=0.004442 median_drop=0.000000 Z=-1.990 flip=0.1900 lethal=0.1875 p=9.767e-01 d=0.030
+[Stage2] layer=8 column=1699 drop=0.001877 median_drop=0.000000 Z=-2.357 flip=0.1875 lethal=0.1850 p=9.908e-01 d=0.013
+[Stage2] layer=8 column=5392 drop=-0.009514 median_drop=0.000000 Z=-3.985 flip=0.1862 lethal=0.1862 p=1.000e+00 d=-0.059
+[Stage2] layer=8 column=11354 drop=0.000027 median_drop=0.000000 Z=-2.621 flip=0.1888 lethal=0.1862 p=9.956e-01 d=0.000
+[Stage2] layer=8 column=633 drop=0.002139 median_drop=0.000000 Z=-2.319 flip=0.1875 lethal=0.1850 p=9.898e-01 d=0.015
+[Stage2] layer=8 column=7331 drop=-0.017712 median_drop=-0.015625 Z=-5.157 flip=0.1888 lethal=0.1875 p=1.000e+00 d=-0.102
+[Stage2] layer=8 column=4577 drop=-0.007509 median_drop=0.000000 Z=-3.699 flip=0.1875 lethal=0.1862 p=9.999e-01 d=-0.053
+[Stage2] layer=8 column=6723 drop=0.004307 median_drop=0.000000 Z=-2.010 flip=0.1862 lethal=0.1837 p=9.778e-01 d=0.031
+[Stage2] layer=8 column=9670 drop=0.004947 median_drop=0.000000 Z=-1.918 flip=0.1862 lethal=0.1837 p=9.725e-01 d=0.036
+[Stage2] layer=8 column=7524 drop=-0.004396 median_drop=0.000000 Z=-3.254 flip=0.1900 lethal=0.1888 p=9.994e-01 d=-0.033
+[Stage2] layer=8 column=5151 drop=0.001751 median_drop=0.000000 Z=-2.375 flip=0.1850 lethal=0.1837 p=9.912e-01 d=0.012
+[Stage2] layer=8 column=10895 drop=-0.000751 median_drop=0.000000 Z=-2.733 flip=0.1900 lethal=0.1888 p=9.969e-01 d=-0.005
+[Stage2] layer=8 column=5997 drop=0.003576 median_drop=0.000000 Z=-2.114 flip=0.1862 lethal=0.1837 p=9.827e-01 d=0.025
+[Stage2] layer=8 column=1152 drop=-0.002246 median_drop=0.000000 Z=-2.946 flip=0.1862 lethal=0.1837 p=9.984e-01 d=-0.017
+[Stage2] layer=8 column=2048 drop=0.005142 median_drop=0.000000 Z=-1.890 flip=0.1875 lethal=0.1862 p=9.706e-01 d=0.035
+[Stage2] layer=8 column=10294 drop=0.001580 median_drop=0.000000 Z=-2.399 flip=0.1875 lethal=0.1850 p=9.918e-01 d=0.011
+[Stage2] layer=8 column=8845 drop=-0.002690 median_drop=0.000000 Z=-3.010 flip=0.1862 lethal=0.1850 p=9.987e-01 d=-0.018
+[Stage2] layer=8 column=1184 drop=-0.000879 median_drop=0.000000 Z=-2.751 flip=0.1888 lethal=0.1862 p=9.970e-01 d=-0.006
+[Stage2] layer=8 column=897 drop=-0.001568 median_drop=0.000000 Z=-2.849 flip=0.1888 lethal=0.1862 p=9.978e-01 d=-0.011
+[Stage2] layer=8 column=9913 drop=-0.005274 median_drop=0.000000 Z=-3.379 flip=0.1875 lethal=0.1862 p=9.996e-01 d=-0.036
+[Stage2] layer=8 column=12711 drop=0.005814 median_drop=0.000000 Z=-1.794 flip=0.1875 lethal=0.1862 p=9.636e-01 d=0.039
+[Stage2] layer=8 column=3372 drop=-0.005898 median_drop=0.000000 Z=-3.468 flip=0.1862 lethal=0.1837 p=9.997e-01 d=-0.041
+[Stage2] layer=8 column=12513 drop=-0.003983 median_drop=0.000000 Z=-3.194 flip=0.1862 lethal=0.1837 p=9.993e-01 d=-0.028
+[Stage2] layer=8 column=10043 drop=-0.006367 median_drop=0.000000 Z=-3.535 flip=0.1850 lethal=0.1837 p=9.998e-01 d=-0.040
+[Stage2] layer=8 column=322 drop=0.003942 median_drop=0.000000 Z=-2.062 flip=0.1850 lethal=0.1825 p=9.804e-01 d=0.028
+[Stage2] layer=8 column=12170 drop=-0.008585 median_drop=0.000000 Z=-3.852 flip=0.1875 lethal=0.1862 p=9.999e-01 d=-0.059
+[Stage2] layer=8 column=4893 drop=0.001792 median_drop=0.000000 Z=-2.369 flip=0.1888 lethal=0.1875 p=9.911e-01 d=0.013
+[Stage2] layer=8 column=13836 drop=0.002027 median_drop=0.000000 Z=-2.336 flip=0.1888 lethal=0.1862 p=9.902e-01 d=0.014
+[Stage2] layer=8 column=9034 drop=0.002777 median_drop=0.000000 Z=-2.228 flip=0.1875 lethal=0.1862 p=9.871e-01 d=0.020
+[Stage2] layer=8 column=5710 drop=-0.006370 median_drop=0.000000 Z=-3.536 flip=0.1888 lethal=0.1875 p=9.998e-01 d=-0.046
+[Stage2] layer=8 column=13014 drop=-0.011450 median_drop=0.000000 Z=-4.262 flip=0.1850 lethal=0.1825 p=1.000e+00 d=-0.072
+[Stage2] layer=8 column=6785 drop=0.005571 median_drop=0.000000 Z=-1.829 flip=0.1888 lethal=0.1862 p=9.663e-01 d=0.040
+[Stage2] layer=8 column=6635 drop=0.006001 median_drop=0.000000 Z=-1.768 flip=0.1900 lethal=0.1888 p=9.614e-01 d=0.041
+[Stage2] layer=8 column=1430 drop=-0.006778 median_drop=0.000000 Z=-3.594 flip=0.1888 lethal=0.1862 p=9.998e-01 d=-0.049
+[Stage2] layer=8 column=13651 drop=0.000830 median_drop=0.000000 Z=-2.507 flip=0.1875 lethal=0.1850 p=9.939e-01 d=0.006
+[Stage2] layer=8 column=8291 drop=-0.000568 median_drop=0.000000 Z=-2.706 flip=0.1888 lethal=0.1875 p=9.966e-01 d=-0.004
+[Stage2] layer=8 column=7713 drop=-0.004835 median_drop=0.000000 Z=-3.316 flip=0.1850 lethal=0.1825 p=9.995e-01 d=-0.034
+[Stage2] layer=8 column=3222 drop=0.003948 median_drop=0.000000 Z=-2.061 flip=0.1875 lethal=0.1862 p=9.803e-01 d=0.027
+[Stage2] layer=8 column=773 drop=-0.011109 median_drop=0.000000 Z=-4.213 flip=0.1888 lethal=0.1862 p=1.000e+00 d=-0.072
+[Stage2] layer=8 column=7865 drop=-0.002829 median_drop=0.000000 Z=-3.030 flip=0.1900 lethal=0.1875 p=9.988e-01 d=-0.021
+[Warning] flip_rate=0.1888 is identical across 35 columns in layer 8; check flip tracking.
+
+=== Layer Summary ===
+layer=8
+validated_anchors=0
+max_drop=0.000000
+mean_drop=0.000000
+max_Z=0.000
+
+=== Processing layer 9 ===
+[DEBUG] Layer 9 weight shape: torch.Size([4096, 14336])
+[ProbeCheck] layer=9 num_cols=14336
+[Taylor Top20] [33.97177505493164, 11.644649505615234, 11.223222732543945, 10.659034729003906, 10.222793579101562, 8.746962547302246, 8.650344848632812, 7.790582180023193, 7.765259265899658, 7.438500881195068, 6.472380638122559, 6.389557361602783, 6.368810653686523, 6.331663131713867, 6.275397300720215, 6.253905296325684, 6.197129726409912, 6.122142791748047, 6.087281227111816, 6.024518013000488]
+Random baseline mu_rand: 0.020048
+Random baseline sigma_rand: 0.006757
+Stage 1 retained 128 columns for Stage 2 EMS (top_k=128).
+[Stage2] layer=9 column=11480 drop=0.004432 median_drop=0.000000 Z=-2.311 flip=0.1875 lethal=0.1850 p=9.896e-01 d=0.031
+[Stage2] layer=9 column=8047 drop=0.011901 median_drop=0.000000 Z=-1.206 flip=0.1888 lethal=0.1862 p=8.860e-01 d=0.083
+[Stage2] layer=9 column=4892 drop=0.005960 median_drop=0.000000 Z=-2.085 flip=0.1850 lethal=0.1825 p=9.815e-01 d=0.043
+[Stage2] layer=9 column=11512 drop=0.013526 median_drop=0.015625 Z=-0.965 flip=0.1862 lethal=0.1825 p=8.328e-01 d=0.087
+[Stage2] layer=9 column=11395 drop=0.003824 median_drop=0.000000 Z=-2.401 flip=0.1888 lethal=0.1862 p=9.918e-01 d=0.026
+[Stage2] layer=9 column=3528 drop=0.011772 median_drop=0.000000 Z=-1.225 flip=0.1875 lethal=0.1850 p=8.897e-01 d=0.081
