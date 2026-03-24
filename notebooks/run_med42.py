@@ -44,7 +44,7 @@ sys.stderr = sys.stdout
 # EMS configuration constants (defaults for next runs)
 RANDOM_BASELINE_COLS = 256
 Z_THRESHOLD = 2.0
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 
 
 
@@ -432,7 +432,7 @@ def _run_ems_for_layer(
             track_flips=False,
             pad_token_id=pad_token_id,
         )
-        if mean_drop > max(mu_rand + 1.0 * sigma_rand, 0.0):
+        if mean_drop > mu_rand:
             stage1_candidates.append((int(col), mean_drop))
 
     # Keep top-k Stage 2 candidates by mean drop (positive = safety-relevant).
