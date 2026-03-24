@@ -133,7 +133,7 @@ class MedNSQProbe:
             crushed_weight = original_weight.sign() * scale_per_col
             delta = crushed_weight - original_weight
 
-            col_scores = torch.abs((grad_accum * delta).sum(dim=0))
+            col_scores = ((grad_accum * delta).sum(dim=0))
 
         return col_scores
 
