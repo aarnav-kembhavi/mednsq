@@ -42,7 +42,7 @@ sys.stderr = sys.stdout
 
 
 # EMS configuration constants (defaults for next runs)
-RANDOM_BASELINE_COLS = 64
+RANDOM_BASELINE_COLS = 256
 Z_THRESHOLD = 2.0
 BATCH_SIZE = 32
 
@@ -115,6 +115,7 @@ def _batched_margins_and_predictions(
         return torch.zeros(0, dtype=torch.float32), []
 
     device = next(model.parameters()).device
+    letter_tok = letter_token_ids.to(device)
 
     margins: List[float] = []
     preds: List[int] = []
@@ -123,6 +124,7 @@ def _batched_margins_and_predictions(
         batch = adv_pairs[start : start + batch_size]
         seq_lens = [pair["input_ids"].shape[1] for pair in batch]
         max_len = max(seq_lens)
+        B = len(batch)
 
         input_batch = []
         mask_batch = []
@@ -140,23 +142,31 @@ def _batched_margins_and_predictions(
         input_ids = torch.cat(input_batch, dim=0)
         attention_mask = torch.cat(mask_batch, dim=0)
 
+        pos_ids = torch.tensor(
+            [pair["pos_id"] for pair in batch], device=device, dtype=torch.long
+        )
+        neg_ids = torch.tensor(
+            [pair["neg_id"] for pair in batch], device=device, dtype=torch.long
+        )
+
         with torch.no_grad():
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
             logits = outputs.logits  # [B, max_len, vocab]
 
-        for i, pair in enumerate(batch):
-            last_idx = seq_lens[i] - 1
-            token_logits = logits[i, last_idx, :]
+        last_idx = torch.tensor(
+            [sl - 1 for sl in seq_lens], device=device, dtype=torch.long
+        )
+        rows = torch.arange(B, device=device, dtype=torch.long)
+        logits_last = logits[rows, last_idx, :]
 
-            pos_id = pair["pos_id"]
-            neg_id = pair["neg_id"]
-            margin = (token_logits[pos_id] - token_logits[neg_id]).item()
-            margins.append(margin)
+        margins_b = (
+            logits_last[rows, pos_ids] - logits_last[rows, neg_ids]
+        ).detach()
+        letter_logits = logits_last[:, letter_tok]
+        pred_idx = torch.argmax(letter_logits, dim=1).detach()
 
-            # Prediction over A/B/C/D.
-            letter_logits = token_logits[letter_token_ids]
-            pred_idx = int(torch.argmax(letter_logits).item())
-            preds.append(pred_idx)
+        margins.extend(margins_b.float().cpu().tolist())
+        preds.extend(pred_idx.cpu().tolist())
 
     return torch.tensor(margins, dtype=torch.float32), preds
 
@@ -197,6 +207,7 @@ def _evaluate_column_ems(
     preds: List[int] = []
     processed = 0
     stop_early = False
+    running_sum_drop = 0.0
 
     try:
         device = next(model.parameters()).device
@@ -204,32 +215,37 @@ def _evaluate_column_ems(
 
         for start in range(0, len(adv_pairs), BATCH_SIZE):
             batch = adv_pairs[start : start + BATCH_SIZE]
-            batch_baseline = baseline_margins[processed : processed + len(batch)]
+            processed_start = processed
+            n_batch = len(batch)
+            batch_baseline = baseline_margins[processed_start : processed_start + n_batch]
 
             margins_batch, preds_batch = _batched_margins_and_predictions(
                 model, batch, letter_token_ids, batch_size=BATCH_SIZE, pad_token_id=pad_token_id
             )
 
-            for j, margin in enumerate(margins_batch.tolist()):
-                crushed_margins.append(margin)
+            margins_f = margins_batch.float()
+            if batch_baseline.device != margins_f.device:
+                margins_f = margins_f.to(batch_baseline.device)
+            drops_batch = batch_baseline - margins_f
+            cumsum_batch = torch.cumsum(drops_batch, dim=0)
+            running_sum_before = running_sum_drop
+
+            for j in range(n_batch):
+                crushed_margins.append(float(margins_f[j].item()))
                 if track_flips:
                     preds.append(preds_batch[j])
 
                 processed += 1
 
-                # Early stopping during Stage 1 EMS.
+                # Early stopping during Stage 1 EMS (incremental mean vs full-tensor mean).
                 if (
                     early_stop_mu is not None
                     and processed % 10 == 0
                     and processed <= len(baseline_margins)
                 ):
-                    base_so_far = baseline_margins[:processed]
-                    crushed_so_far = torch.tensor(
-                        crushed_margins[:processed], dtype=torch.float32
-                    )
-                    mean_drop_so_far = float(
-                        (base_so_far - crushed_so_far).mean().item()
-                    )
+                    mean_drop_so_far = (
+                        running_sum_before + float(cumsum_batch[j].item())
+                    ) / float(processed)
                     threshold = early_stop_mu
                     if early_stop_sigma is not None:
                         threshold = early_stop_mu + 0.25 * early_stop_sigma
@@ -239,6 +255,8 @@ def _evaluate_column_ems(
 
             if stop_early:
                 break
+
+            running_sum_drop += float(drops_batch.sum().item())
 
     finally:
         # Restore the crushed column and sanity-check restoration.
