@@ -39,9 +39,9 @@ class EMSConfig:
     """Configuration for EMS experiments."""
 
     layer_idx: int = 2
-    calibration_size: int = 800
+    calibration_size: int = 400
     stage1_top_k: int = 256
-    stage1_samples: int = 120
+    stage1_samples: int = 60
     stage2_top_k: int = 128
     stage2_samples: int = 800
 
