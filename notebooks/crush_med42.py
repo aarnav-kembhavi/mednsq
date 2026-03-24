@@ -8,6 +8,9 @@ only model loading, down_proj access, and anchor list differ.
 from __future__ import annotations
 
 import os
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import random
 import sys
 from typing import Any, Dict, List, Optional, Tuple
@@ -43,7 +46,7 @@ sys.stderr = sys.stdout
 MODEL_NAME = "m42-health/Llama3-Med42-8B"
 
 # Batching constant (preserve default)
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 
 # Tokenizer padding id is set once after tokenizer load.
 PAD_TOKEN_ID: int = 0
@@ -460,6 +463,10 @@ def run_dataset_evaluation(
         print(f"Anchor mean drop: {anchor_mean}")
         print(f"Random mean drop: {random_mean} ± {random_std}")
         print(f"Diff: {anchor_mean - random_mean}")
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
 
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
