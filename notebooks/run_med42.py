@@ -336,6 +336,20 @@ def _run_ems_for_layer(
     positive_indices = torch.where(positive_mask)[0]
     negative_indices = torch.where(negative_mask)[0]
 
+    # Limit candidate space to strongest positive Taylor neurons
+    TOP_K_TAYLOR = 500
+
+    if positive_indices.numel() > 0:
+        sorted_pos = positive_indices[
+            torch.argsort(col_scores[positive_indices], descending=True)
+        ]
+        selected_cols = sorted_pos[:TOP_K_TAYLOR]
+    else:
+        selected_cols = positive_indices  # empty fallback
+
+    print(f"Total positive neurons: {positive_indices.numel()}")
+    print(f"Selected top Taylor neurons: {len(selected_cols)}")
+
     positive_scores = col_scores[positive_indices]
     negative_scores = col_scores[negative_indices]
 
@@ -399,9 +413,9 @@ def _run_ems_for_layer(
             f"Z-scores may be unstable."
         )
 
-    # Stage 1 EMS on all positive-Taylor columns for this layer (global top-50 chosen in main()).
+    # Stage 1 EMS on top-k positive-Taylor columns for this layer (global anchors chosen in main()).
     stage1_candidates: List[Tuple[int, float]] = []
-    for col in positive_indices.tolist():
+    for col in selected_cols.tolist():
         drops, mean_drop, _, _ = _evaluate_column_ems(
             model,
             probe,
@@ -416,7 +430,7 @@ def _run_ems_for_layer(
             track_flips=False,
             pad_token_id=pad_token_id,
         )
-        if mean_drop > 0.0:
+        if mean_drop > max(mu_rand + 1.0 * sigma_rand, 0.0):
             stage1_candidates.append((int(col), mean_drop))
 
     # Keep top-k Stage 2 candidates by mean drop (positive = safety-relevant).
