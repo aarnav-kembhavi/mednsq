@@ -44,7 +44,7 @@ sys.stderr = sys.stdout
 # EMS configuration constants (defaults for next runs)
 RANDOM_BASELINE_COLS = 256
 Z_THRESHOLD = 2.0
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 
 
 
@@ -337,7 +337,7 @@ def _run_ems_for_layer(
     negative_indices = torch.where(negative_mask)[0]
 
     # Limit candidate space to strongest positive Taylor neurons
-    TOP_K_TAYLOR = 500
+    TOP_K_TAYLOR = 200
 
     if positive_indices.numel() > 0:
         sorted_pos = positive_indices[
@@ -415,7 +415,9 @@ def _run_ems_for_layer(
 
     # Stage 1 EMS on top-k positive-Taylor columns for this layer (global anchors chosen in main()).
     stage1_candidates: List[Tuple[int, float]] = []
-    for col in selected_cols.tolist():
+    for i, col in enumerate(selected_cols.tolist()):
+        if i % 20 == 0:
+            print(f"[Stage1] Processed {i}/{len(selected_cols)} columns")
         drops, mean_drop, _, _ = _evaluate_column_ems(
             model,
             probe,
