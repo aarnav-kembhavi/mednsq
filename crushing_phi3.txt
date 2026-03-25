@@ -1,71 +1,65 @@
-/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
-  warnings.warn(
-`flash-attention` package not found, consider installing for better performance: No module named 'flash_attn'.
-Current `flash-attention` does not support `window_size`. Either upgrade or use `attn_implementation='eager'`.
-Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|#####     | 1/2 [00:01<00:01,  1.40s/it]Loading checkpoint shards: 100%|##########| 2/2 [00:02<00:00,  1.03s/it]Loading checkpoint shards: 100%|##########| 2/2 [00:02<00:00,  1.08s/it]
-/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
-  warnings.warn(
-You are not running the flash-attention implementation, expect numerical differences.
-[ANCHOR][Seed 1] k=1 acc=0.496021 margin=0.106145
-[RANDOM][Seed 1] k=1 acc=0.498674 margin=0.116682
-[ANCHOR][Seed 1] k=4 acc=0.498674 margin=0.079886
-[RANDOM][Seed 1] k=4 acc=0.498674 margin=0.106701
-[ANCHOR][Seed 1] k=8 acc=0.496021 margin=0.096237
-[RANDOM][Seed 1] k=8 acc=0.496021 margin=0.104834
-[ANCHOR][Seed 1] k=16 acc=0.498674 margin=0.072859
-[RANDOM][Seed 1] k=16 acc=0.498674 margin=0.102899
-[ANCHOR][Seed 1] k=32 acc=0.501326 margin=0.061850
-[RANDOM][Seed 1] k=32 acc=0.501326 margin=0.112896
-[ANCHOR][Seed 1] k=48 acc=0.498674 margin=0.042764
-[RANDOM][Seed 1] k=48 acc=0.498674 margin=0.106117
-[ANCHOR][Seed 1] k=64 acc=0.448276 margin=0.031330
-[RANDOM][Seed 1] k=64 acc=0.496021 margin=0.099618
-[ANCHOR][Seed 2] k=1 acc=0.501319 margin=0.085520
-[RANDOM][Seed 2] k=1 acc=0.498681 margin=0.095795
-[ANCHOR][Seed 2] k=4 acc=0.501319 margin=0.065605
-[RANDOM][Seed 2] k=4 acc=0.501319 margin=0.094900
-[ANCHOR][Seed 2] k=8 acc=0.498681 margin=0.077796
-[RANDOM][Seed 2] k=8 acc=0.503958 margin=0.090856
-[ANCHOR][Seed 2] k=16 acc=0.501319 margin=0.061569
-[RANDOM][Seed 2] k=16 acc=0.501319 margin=0.091086
-[ANCHOR][Seed 2] k=32 acc=0.501319 margin=0.045642
-[RANDOM][Seed 2] k=32 acc=0.506596 margin=0.089049
-[ANCHOR][Seed 2] k=48 acc=0.498681 margin=0.032858
-[RANDOM][Seed 2] k=48 acc=0.501319 margin=0.091667
-[ANCHOR][Seed 2] k=64 acc=0.453826 margin=0.018315
-[RANDOM][Seed 2] k=64 acc=0.503958 margin=0.094953
-[ANCHOR][Seed 3] k=1 acc=0.507937 margin=0.110711
-[RANDOM][Seed 3] k=1 acc=0.507937 margin=0.114479
-[ANCHOR][Seed 3] k=4 acc=0.505291 margin=0.083711
-[RANDOM][Seed 3] k=4 acc=0.505291 margin=0.112431
-[ANCHOR][Seed 3] k=8 acc=0.505291 margin=0.090193
-[RANDOM][Seed 3] k=8 acc=0.505291 margin=0.105086
-[ANCHOR][Seed 3] k=16 acc=0.505291 margin=0.088299
-[RANDOM][Seed 3] k=16 acc=0.502645 margin=0.116615
-[ANCHOR][Seed 3] k=32 acc=0.505291 margin=0.070772
-[RANDOM][Seed 3] k=32 acc=0.507937 margin=0.112579
-[ANCHOR][Seed 3] k=48 acc=0.500000 margin=0.062200
-[RANDOM][Seed 3] k=48 acc=0.505291 margin=0.112052
-[ANCHOR][Seed 3] k=64 acc=0.460317 margin=0.050076
-[RANDOM][Seed 3] k=64 acc=0.510582 margin=0.117241
-k=1
-Anchor acc: 0.5017590125401815
-Random acc: 0.5017636716365814
+
+Dataset: mcq
+Anchor: 0.07633919268846512 ± 0.3282085359096527
+Random: 0.00198436887585558 ± 0.005047697514039897
+Diff: 0.07435482381260954
+p-value: 2.904399123458642e-59
+Cohen's d: 20.622621115491544
+
+=== PER-ANCHOR ANALYSIS ===
+
+Top 15 anchors (individual impact):
+1. Layer 12, Col 4157 -> Drop: 0.016178039833903313
+2. Layer 8, Col 7649 -> Drop: 0.013704254291951656
+3. Layer 19, Col 7519 -> Drop: 0.01076420582830906
+4. Layer 22, Col 2028 -> Drop: 0.01061526034027338
+5. Layer 8, Col 3352 -> Drop: 0.009966377168893814
+6. Layer 8, Col 4360 -> Drop: 0.009492343291640282
+7. Layer 15, Col 4696 -> Drop: 0.008487286977469921
+8. Layer 18, Col 2960 -> Drop: 0.007482230197638273
+9. Layer 21, Col 2452 -> Drop: 0.006624176166951656
+10. Layer 19, Col 3938 -> Drop: 0.006227852310985327
+11. Layer 21, Col 3557 -> Drop: 0.005877507384866476
+12. Layer 22, Col 3223 -> Drop: 0.005538980942219496
+13. Layer 14, Col 5222 -> Drop: 0.004559018649160862
+14. Layer 21, Col 5671 -> Drop: 0.004531819839030504
+15. Layer 15, Col 2385 -> Drop: 0.00426760409027338
+
+Anchor drop stats:
+Mean: 0.002374290721490979
+Std: 0.00444462476298213
+Max: 0.016178039833903313
+Min: -0.008287829346954823
+
+Anchors above mean: 32 / 64
+
+=== K-SWEEP ANALYSIS ===
+
+k=2
+Anchor mean drop: -0.004567437339574099
+Random mean drop: 0.0014533195266267286 ± 0.004096962136557658
+Diff: -0.006020756866200827
+
 k=4
-Anchor acc: 0.5017613371213278
-Random acc: 0.5017613371213278
+Anchor mean drop: 0.027783462777733803
+Random mean drop: 0.0020543218303646425 ± 0.003962728980791022
+Diff: 0.02572914094736916
+
 k=8
-Anchor acc: 0.49999764561653137
-Random acc: 0.5017566680908203
+Anchor mean drop: 0.011432435363531113
+Random mean drop: 0.0021797508012969045 ± 0.005243990208456745
+Diff: 0.009252684562234208
+
 k=16
-Anchor acc: 0.5017613371213278
-Random acc: 0.5008795062700907
+Anchor mean drop: 0.03481043875217438
+Random mean drop: 0.001950473134056665 ± 0.004502637889035294
+Diff: 0.032859965618117715
+
 k=32
-Anchor acc: 0.5026455124219259
-Random acc: 0.5052863756815592
-k=48
-Anchor acc: 0.4991181592146556
-Random acc: 0.5017613371213278
+Anchor mean drop: 0.04581943154335022
+Random mean drop: 0.00020347373851109296 ± 0.004674336048217331
+Diff: 0.045615957804839125
+
 k=64
-Anchor acc: 0.45413972934087116
-Random acc: 0.5035203496615092
+Anchor mean drop: 0.07633919268846512
+Random mean drop: 0.00198436887585558 ± 0.005047697514039897
