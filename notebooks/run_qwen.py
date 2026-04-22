@@ -27,6 +27,8 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+PRINTED_ANSWER_STATS = False
+
 
 # ----------------------------
 # SECTION 1: Config
@@ -362,21 +364,24 @@ def batched_forward_pass(
             pred_idx = int(torch.argmax(letter_logits).item())
             preds.append(pred_idx)
 
-    if len(all_answer_indices) > 0:
-        arr = torch.tensor(all_answer_indices)
-        print("=== Answer Index Stats ===")
-        print("min:", int(arr.min().item()))
-        print("max:", int(arr.max().item()))
-        print("mean:", float(arr.float().mean().item()))
-        hist = torch.histc(arr.float(), bins=10)
-        print("histogram:", hist.tolist())
-        if arr.max().item() - arr.min().item() > 50:
-            print("WARNING: Answer positions are highly scattered")
-    if len(all_distances) > 0:
-        dist_tensor = torch.tensor(all_distances)
-        print("=== Distance to End Stats ===")
-        print("mean distance:", float(dist_tensor.float().mean().item()))
-        print("max distance:", int(dist_tensor.max().item()))
+    global PRINTED_ANSWER_STATS
+    if not PRINTED_ANSWER_STATS:
+        if len(all_answer_indices) > 0:
+            arr = torch.tensor(all_answer_indices)
+            print("=== Answer Index Stats ===")
+            print("min:", int(arr.min().item()))
+            print("max:", int(arr.max().item()))
+            print("mean:", float(arr.float().mean().item()))
+            hist = torch.histc(arr.float(), bins=10)
+            print("histogram:", hist.tolist())
+            if arr.max().item() - arr.min().item() > 50:
+                print("WARNING: Answer positions are highly scattered")
+        if len(all_distances) > 0:
+            dist_tensor = torch.tensor(all_distances)
+            print("=== Distance to End Stats ===")
+            print("mean distance:", float(dist_tensor.float().mean().item()))
+            print("max distance:", int(dist_tensor.max().item()))
+        PRINTED_ANSWER_STATS = True
 
     return torch.tensor(margins, dtype=torch.float32), preds
 
