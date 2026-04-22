@@ -35,8 +35,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 MODEL_NAME = "OpenMeditron/Meditron3-Qwen2.5-7B"
 
 # Experiments to preserve (from notebooks/run_mednsq.py)
-SEEDS = [1, 2]
-LAYERS_TO_TEST = list(range(11, 23))
+SEEDS = [1]
+LAYERS_TO_TEST = list(range(10, 23))
 
 # EMS constants (preserve)
 RANDOM_BASELINE_COLS = 128
@@ -59,7 +59,7 @@ class EMSConfig:
     calibration_size: int = 400
     stage1_top_k: int = 256
     stage1_samples: int = 60
-    stage2_top_k: int = 200
+    stage2_top_k: int = 128
     stage2_samples: int = 400
 
 
@@ -323,20 +323,14 @@ def batched_forward_pass(
             if answer_indices[i] is not None:
                 all_distances.append(seq_lens[i] - answer_indices[i])
 
-        # STRICT DEBUG CHECK (run once): token list with indices, A/B/C/D positions, chosen answer_idx.
+        # STRICT DEBUG CHECK (run once): keep computations; decoded/token-list prints removed.
         if start == 0 and tokenizer is not None:
-            print("=== DEBUG TOKEN CHECK ===")
             i0 = 0
             L0 = int(seq_lens[i0])
             ids0 = input_ids[i0, :L0].cpu().tolist()
             token_list = [(j, ids0[j], tokenizer.decode([ids0[j]]) if ids0[j] != PAD_TOKEN_ID else "<pad>") for j in range(L0)]
-            print("Token list (idx, id, decode):", token_list)
             letter_set = set(int(x) for x in letter_token_ids.cpu().tolist())
             letter_positions = [j for j in range(L0) if ids0[j] in letter_set]
-            print("Positions of A/B/C/D tokens:", letter_positions)
-            print("Chosen answer_idx:", answer_indices[i0])
-            print("Answer idx distribution sample:", all_answer_indices[:10])
-            print(tokenizer.decode(input_ids[0, :L0]))
 
         with torch.no_grad():
             out = model(input_ids=input_ids, attention_mask=attention_mask)
