@@ -1,0 +1,200 @@
+=== Experiment Configuration ===
+Model: OpenMeditron/Meditron3-Qwen2.5-7B
+Calibration size: 400
+Stage1 top_k: 256
+Stage1 samples: 60
+Stage2 top_k: 128
+Stage2 samples: 400
+Random baseline cols: 128
+Batch size: 32
+Pad token id: 151643
+Layers to test: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+===============================
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights: 100%|██████████| 339/339 [00:00<00:00, 9648.03it/s]
+Model device: cuda:0
+=== Model Dimensions ===
+hidden_size: 3584
+num_layers: 28
+num_heads: 28
+intermediate_size: 18944
+head_dim: 128
+Num layers: 28
+Down proj shape: torch.Size([3584, 18944])
+
+===== RUNNING SEED 1 =====
+[Data] dataset size: 460
+Filtering invalid samples...
+Kept 400 / 400 samples
+=== Answer Index Stats ===
+min: 69
+max: 508
+mean: 199.91250610351562
+histogram: [26.0, 116.0, 91.0, 66.0, 47.0, 26.0, 12.0, 13.0, 1.0, 2.0]
+WARNING: Answer positions are highly scattered
+=== Distance to End Stats ===
+mean distance: 11.479999542236328
+max distance: 35
+Valid baseline samples: 400
+
+=== Baseline Held-out Evaluation ===
+Baseline accuracy: 0.5666666666666667
+Baseline mean margin: 0.014583333333333334
+
+=== Processing layer 10 ===
+[WeightCheck] layer 10 down_proj.weight shape: (3584, 18944)
+[ProbeCheck] layer=10 num_cols=18944
+[Taylor Top20] [4.893266677856445, 4.787847995758057, 4.309894561767578, 3.2691783905029297, 2.9740939140319824, 2.958369016647339, 2.7327492237091064, 2.658996105194092, 2.6586759090423584, 2.6248743534088135, 2.4889817237854004, 2.4676315784454346, 2.3709654808044434, 2.2290260791778564, 2.1815578937530518, 2.1502866744995117, 2.1412057876586914, 2.1360912322998047, 2.111858367919922, 2.06290864944458]
+[RestoreCheck] layer=10 col=15049 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11248 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17567 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17885 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15571 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17968 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=10663 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=10432 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4736 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15057 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=1641 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12560 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18398 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11484 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12972 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6826 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=5232 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=10311 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2105 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6765 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=16421 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15384 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11150 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=1629 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17767 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17673 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=5589 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6203 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=8071 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6256 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18628 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12848 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9868 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=3439 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=3237 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=10799 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15478 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2273 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4684 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9760 max_diff=0.000000e+00
+SANITY CHECK:
+Top mean drop: -0.002546874948893674
+Random mean drop: 0.0003203124913852662
+Top std: 0.012187209450113833
+Random std: 0.003643164037742867
+WARNING: EMS signal may be invalid
+[RestoreCheck] layer=10 col=552 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17778 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=14168 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=5940 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=16333 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2187 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11550 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=7844 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6470 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18719 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15913 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=7826 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=13818 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=5904 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=14281 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=3378 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2230 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15753 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=3838 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=160 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=5500 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=986 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17238 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=5025 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15508 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2497 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2667 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4509 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4384 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15062 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15769 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=8022 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=13701 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=289 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6693 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11287 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4406 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15242 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18389 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6255 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11631 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=7480 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=13167 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2891 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=3307 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=10044 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17527 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11629 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11295 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=13232 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12540 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17018 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4047 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9145 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17198 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=7595 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15249 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=819 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12859 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6979 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9275 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12561 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=14547 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=3207 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2991 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17852 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=10138 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12249 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6930 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15507 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11640 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9285 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17813 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=651 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15450 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17258 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9773 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=1951 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=16845 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9501 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=12156 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4395 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=7085 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6492 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17518 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=583 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=9797 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=2100 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=4259 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17867 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18006 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=13152 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=7266 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18808 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=13497 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15239 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=6153 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=15371 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=1062 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=5906 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=11951 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18187 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=18459 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=10094 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=17038 max_diff=0.000000e+00
+[RestoreCheck] layer=10 col=13675 max_diff=0.000000e+00
