@@ -14,6 +14,7 @@ Architecture: generic transformer blocks via _get_layers / mlp.down_proj / self_
 
 from __future__ import annotations
 
+import builtins
 import json
 import os
 import random
@@ -28,6 +29,13 @@ import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 PRINTED_ANSWER_STATS = False
+VERBOSE = False
+_ORIG_PRINT = builtins.print
+
+
+def print(*args, **kwargs):
+    if VERBOSE:
+        _ORIG_PRINT(*args, **kwargs)
 
 
 # ----------------------------
@@ -1742,10 +1750,11 @@ def main() -> None:
         for (layer, col), stats in sorted_anchor_stats:
             f.write(f"(layer={layer} col={col}) drop={stats['drop']:.2f} Z={stats['z']:.1f}\n")
 
-    print("\n=== Discovered Anchors ===")
     log_progress("Discovered anchors (top 64):")
     for (layer, col), stats in sorted_anchor_stats:
-        print(f"(layer={layer}, col={col}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
+        _ORIG_PRINT(
+            f"(layer={int(layer)}, col={int(col)}, drop={float(stats['drop']):.6f}, z={float(stats['z']):.6f})"
+        )
         log_progress(f"  (layer={layer}, col={col}) drop={stats['drop']:.2f} Z={stats['z']:.1f}")
 
     if False:

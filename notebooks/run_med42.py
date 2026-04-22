@@ -244,9 +244,6 @@ def _evaluate_column_ems(
         # This matches the desired per-sample EMS flip semantics.
         letter_token_ids_cpu = letter_token_ids.detach().cpu()
 
-        debug_limit = 0  # Disable per-sample debug printing.
-        printed_debug = 0
-
         for i, pred_idx in enumerate(preds):
             pair = adv_pairs[i]
             correct_token = int(pair["pos_id"])
@@ -257,15 +254,6 @@ def _evaluate_column_ems(
                 flips += 1
                 if pred_token == neg_token:
                     lethal_flips += 1
-
-            # Optional lightweight debug trace for the first few samples.
-            if printed_debug < debug_limit:
-                print(
-                    f"[FlipDebug] layer={layer_idx} column={col_idx} "
-                    f"sample={i} pred_token={pred_token} "
-                    f"correct_token={correct_token} neg_token={neg_token}"
-                )
-                printed_debug += 1
 
         flip_rate = flips / total if total > 0 else 0.0
         lethal_flip_rate = lethal_flips / total if total > 0 else 0.0
@@ -288,21 +276,12 @@ def _run_ems_for_layer(
     baseline_margins_all and baseline_eval are precomputed per seed and passed in.
     """
 
-    print(f"\n=== Processing layer {layer_idx} ===")
-
-    print(
-        f"[DEBUG] Layer {layer_idx} weight shape:",
-        probe.get_layer_weight(layer_idx).shape,
-    )
-
     # Stage 0: directional Taylor scores for all columns.
     jacobian_scores = probe.compute_contrastive_jacobian(layer_idx, adv_pairs)
     num_cols = jacobian_scores.numel()
-    print(f"[ProbeCheck] layer={layer_idx} num_cols={num_cols}")
 
     stage1_top_k = min(cfg.stage1_top_k, num_cols)
     top_vals, top_indices = torch.topk(jacobian_scores, k=stage1_top_k)
-    print("[Taylor Top20]", top_vals[:20].detach().cpu().tolist())
 
     stage1_samples = min(cfg.stage1_samples, len(adv_pairs))
     stage2_samples = min(cfg.stage2_samples, len(adv_pairs))
@@ -344,8 +323,6 @@ def _run_ems_for_layer(
         mu_rand = 0.0
         sigma_rand = 0.0
 
-    print(f"Random baseline mu_rand: {mu_rand:.6f}")
-    print(f"Random baseline sigma_rand: {sigma_rand:.6f}")
     if sigma_rand > 0.05:
         print(
             f"[Warning] sigma_rand={sigma_rand:.6f} is unusually large; "
@@ -375,11 +352,6 @@ def _run_ems_for_layer(
     # Keep top-k Stage 2 candidates by mean drop (positive = safety-relevant).
     stage1_candidates.sort(key=lambda x: x[1], reverse=True)
     stage2_columns = [c for c, _ in stage1_candidates[: cfg.stage2_top_k]]
-
-    print(
-        f"Stage 1 retained {len(stage2_columns)} columns for Stage 2 EMS "
-        f"(top_k={cfg.stage2_top_k})."
-    )
 
     # Stage 2 EMS on (possibly truncated) calibration set, with lethal flip tracking.
     validated_anchors: List[Dict[str, Any]] = []
@@ -426,14 +398,6 @@ def _run_ems_for_layer(
             "lethal_flip_rate": lethal_flip_rate,
         }
         stage2_results.append(result)
-
-        print(
-            "[Stage2] "
-            f"layer={layer_idx} column={col} "
-            f"drop={mean_drop:.6f} median_drop={median_drop:.6f} Z={z:.3f} "
-            f"flip={flip_rate:.4f} lethal={lethal_flip_rate:.4f}"
-            f" p={p_value:.3e} d={cohens_d:.3f}"
-        )
 
         if z > Z_THRESHOLD:
             validated_anchors.append(result)
@@ -1200,15 +1164,6 @@ def main():
     # Default experiment configuration (can be adjusted as needed).
     cfg = EMSConfig()
 
-    print("=== Experiment Configuration ===")
-    print("Calibration size:", cfg.calibration_size)
-    print("Stage1 top_k:", cfg.stage1_top_k)
-    print("Stage1 samples:", cfg.stage1_samples)
-    print("Stage2 top_k:", cfg.stage2_top_k)
-    print("Stage2 samples:", cfg.stage2_samples)
-    print("Random baseline cols:", RANDOM_BASELINE_COLS)
-    print("===============================")
-
     # Load tokenizer once.
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
@@ -1230,7 +1185,6 @@ def main():
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
-        print("=== Running Anchor Activation Patching Experiment ===")
         calibration_samples = load_mcq_dataset(n_total=120)
         anchors = [
             (16, 1761), (16, 2056), (16, 3433), (16, 3442), (16, 1471),
@@ -1283,9 +1237,6 @@ def main():
                 continue
 
             log_progress(f"Seed {seed} started")
-            print(f"\n===== RUNNING SEED {seed} =====")
-            print(f"Calibration size: {cfg.calibration_size}")
-
             # Reproducibility: set experiment seeds for this run.
             torch.manual_seed(seed)
             random.seed(seed)
@@ -1303,10 +1254,6 @@ def main():
 
             probe = MedNSQProbe(model)
             W = probe.get_layer_weight(0)
-            print("=== PROBE SANITY CHECK ===")
-            print("Layers:", len(probe.layers))
-            print("Weight shape:", W.shape)
-            print("Mean:", W.mean().item(), "Std:", W.std().item())
             if len(W.shape) != 2 or W.shape[0] < 1000 or W.shape[1] < 1000:
                 raise RuntimeError("Probe likely broken: unexpected weight shape")
 
@@ -1314,7 +1261,6 @@ def main():
             test_col = 0
             orig = probe.simulate_column_crush(test_layer, test_col)
             after_crush_abs_sum = probe.get_layer_weight(test_layer)[:, test_col].abs().sum().item()
-            print("Column after crush sum:", after_crush_abs_sum)
             probe.restore_column(test_layer, test_col, orig)
             if after_crush_abs_sum <= 1e-3:
                 raise RuntimeError(
@@ -1336,7 +1282,6 @@ def main():
             )
 
             test_scores = probe.compute_contrastive_jacobian(test_layer, adv_pairs[:20])
-            print("Jacobian sample:", test_scores[:10])
             if torch.allclose(test_scores, torch.zeros_like(test_scores)):
                 raise RuntimeError("Jacobian signal is zero: probe likely incorrect")
 
