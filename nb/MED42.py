@@ -49,9 +49,9 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "OpenMeditron/Meditron3-Qwen2.5-7B"
-    # Middle layers — Qwen2.5-7B has 28 layers; middle = 10..20 inclusive
-    middle_layers: Tuple[int, ...] = tuple(range(11, 25))
+    model_name: str = "m42-health/Llama3-Med42-8B"
+    # Middle layers — Llama-3-8B has 32 layers; middle = 12..27 inclusive
+    middle_layers: Tuple[int, ...] = tuple(range(14, 27))
     seed: int = 42
 
     # Calibration / validation / test sizes
@@ -74,9 +74,9 @@ class Config:
     ablation_test_size: int = 300   # accuracy on test split
 
     # Output
-    discovery_file: str = "anchors_meditron_qwen25_7b.json"
-    ablation_file: str = "ablation_meditron_qwen25_7b.json"
-    log_file: str = "experiment_meditron_qwen25_7b.log"
+    discovery_file: str = "anchors_med42_8b.json"
+    ablation_file: str = "ablation_med42_8b.json"
+    log_file: str = "experiment_med42_8b.log"
 
     intervention_type: str = "column_crush_1bit"
 
@@ -130,10 +130,11 @@ def discover_anchors(
     log(f"Val baseline margin mean={val_baseline.mean():.3f} std={val_baseline.std():.3f}")
 
     # Sanity: round-trip a column, verify margins identical after restore
-    log("Round-trip sanity: crushing layer=10 col=0, restoring, comparing margins...")
+    sanity_layer = CFG.middle_layers[0]
+    log(f"Round-trip sanity: crushing layer={sanity_layer} col=0, restoring, comparing margins...")
     pre = probe.compute_per_sample_margins(calib_pairs[:32], pad_id=pad_id)
-    orig = probe.simulate_column_crush(10, 0)
-    probe.restore_column(10, 0, orig)
+    orig = probe.simulate_column_crush(sanity_layer, 0)
+    probe.restore_column(sanity_layer, 0, orig)
     post = probe.compute_per_sample_margins(calib_pairs[:32], pad_id=pad_id)
     diff = (pre - post).abs().max().item()
     if diff > 1e-3:
