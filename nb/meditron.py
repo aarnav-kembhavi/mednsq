@@ -60,10 +60,10 @@ class Config:
     test_size: int = 300          # MedQA test split, used for ablation accuracy
 
     # Discovery
-    stage1_topk: int = 128        # forward-Taylor top-k per layer
-    stage1_eval_pairs: int = 200  # cheaper subset for stage 1
+    stage1_topk: int = 64        # forward-Taylor top-k per layer
+    stage1_eval_pairs: int = 80  # cheaper subset for stage 1
     stage2_eval_pairs: int = 400  # full calib for stage 2
-    random_baseline_cols: int = 64
+    random_baseline_cols: int = 32
     z_threshold: float = 4.0
     max_anchors: int = 64
 
@@ -192,7 +192,7 @@ def discover_anchors(
         # Keep candidates with positive drop above random mean
         survivors = [(c, d) for c, d in cand_drops_stage1 if d > mu_r]
         survivors.sort(key=lambda x: x[1], reverse=True)
-        survivors = survivors[:64]  # cap before stage 2
+        survivors = survivors[:32]  # cap before stage 2
         log(f"  Stage 1 survivors: {len(survivors)} (above mu_rand)")
 
         # Stage 2: re-evaluate survivors on validation pairs
