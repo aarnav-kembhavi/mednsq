@@ -118,28 +118,36 @@ def build_adversarial_pairs(
             logits = out.logits  # [B, T, V]
 
             for j, e in enumerate(batch):
-                L = seq_lens[j]
-                last_logits = logits[j, L - 1, :]  # logits at the real final token
-                letter_logits = last_logits[letter_token_ids]
-                probs = torch.softmax(letter_logits, dim=-1)
+                    L = seq_lens[j]
+                    last_logits = logits[j, L - 1, :]
+                    letter_logits = last_logits[letter_token_ids].float()
+                    probs = torch.softmax(letter_logits, dim=-1)
 
-                sample = dataset[batch_start + j]
-                correct_index = int(sample["correct_index"])
-                masked = probs.clone()
-                masked[correct_index] = -float("inf")
-                neg_local_idx = int(torch.argmax(masked).item())
+                    sample = dataset[batch_start + j]
+                    correct_index = int(sample["correct_index"])
 
-                pos_id = int(letter_token_ids[correct_index].item())
-                neg_id = int(letter_token_ids[neg_local_idx].item())
+                    # Only keep pairs where model is already correct at baseline.
+                    # frac_neg > 0.3 means discovery finds "fix wrong" neurons, not
+                    # "protect right" neurons — that's not what we want.
+                    pred_idx = int(torch.argmax(letter_logits).item())
+                    if pred_idx != correct_index:
+                        continue
 
-                adv_pairs.append({
-                    "input_ids": e["input_ids"],
-                    "attention_mask": e["attention_mask"],
-                    "pos_id": pos_id,
-                    "neg_id": neg_id,
-                    "correct_index": correct_index,
-                    "neg_local_idx": neg_local_idx,
-                    "seq_len": L,
-                })
+                    masked = probs.clone()
+                    masked[correct_index] = -float("inf")
+                    neg_local_idx = int(torch.argmax(masked).item())
+
+                    pos_id = int(letter_token_ids[correct_index].item())
+                    neg_id = int(letter_token_ids[neg_local_idx].item())
+
+                    adv_pairs.append({
+                        "input_ids": e["input_ids"],
+                        "attention_mask": e["attention_mask"],
+                        "pos_id": pos_id,
+                        "neg_id": neg_id,
+                        "correct_index": correct_index,
+                        "neg_local_idx": neg_local_idx,
+                        "seq_len": L,
+                    })
 
     return adv_pairs

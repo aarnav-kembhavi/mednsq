@@ -88,7 +88,7 @@ class MedNSQProbe:
     def compute_per_sample_margins(
         self,
         adv_pairs: List[Dict[str, Any]],
-        batch_size: int = 16,
+        batch_size: int = 32,
         pad_id: int = 0,
     ) -> torch.Tensor:
         if not adv_pairs:

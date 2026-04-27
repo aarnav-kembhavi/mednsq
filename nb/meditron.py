@@ -61,9 +61,9 @@ class Config:
 
     # Discovery
     stage1_topk: int = 128        # forward-Taylor top-k per layer
-    stage1_eval_pairs: int = 150  # cheaper subset for stage 1
+    stage1_eval_pairs: int = 200  # cheaper subset for stage 1
     stage2_eval_pairs: int = 400  # full calib for stage 2
-    random_baseline_cols: int = 96
+    random_baseline_cols: int = 64
     z_threshold: float = 4.0
     max_anchors: int = 64
 
@@ -167,24 +167,27 @@ def discover_anchors(
         stage1_pairs = calib_pairs[:CFG.stage1_eval_pairs]
         stage1_baseline = calib_baseline[:CFG.stage1_eval_pairs]
 
-        def eval_col(col: int, pairs, baseline):
-            orig = probe.simulate_column_crush(layer_idx, col)
-            try:
-                m = probe.compute_per_sample_margins(pairs, pad_id=pad_id)
-                drop = (baseline - m).mean().item()
-            finally:
-                probe.restore_column(layer_idx, col, orig)
-            return drop
+        def eval_cols_batched(cols: List[int], pairs, baseline) -> List[float]:
+            """Crush each column, measure margin drop, restore. batch_size=32 keeps GPU fed."""
+            drops = []
+            for c in cols:
+                orig = probe.simulate_column_crush(layer_idx, c)
+                try:
+                    m = probe.compute_per_sample_margins(pairs, batch_size=32, pad_id=pad_id)
+                    drops.append((baseline - m).mean().item())
+                finally:
+                    probe.restore_column(layer_idx, c, orig)
+            return drops
 
-        rand_drops = [eval_col(c, stage1_pairs, stage1_baseline) for c in rand_cols]
+        rand_drops = eval_cols_batched(rand_cols, stage1_pairs, stage1_baseline)
         mu_r = float(np.mean(rand_drops))
         sigma_r = float(np.std(rand_drops))
         log(f"  Random baseline: mu={mu_r:.5f} sigma={sigma_r:.5f}")
 
-        cand_drops_stage1 = []
-        for c in candidate_cols:
-            d = eval_col(c, stage1_pairs, stage1_baseline)
-            cand_drops_stage1.append((c, d))
+        cand_drops_stage1 = list(zip(
+            candidate_cols,
+            eval_cols_batched(candidate_cols, stage1_pairs, stage1_baseline),
+        ))
 
         # Keep candidates with positive drop above random mean
         survivors = [(c, d) for c, d in cand_drops_stage1 if d > mu_r]
@@ -193,19 +196,24 @@ def discover_anchors(
         log(f"  Stage 1 survivors: {len(survivors)} (above mu_rand)")
 
         # Stage 2: re-evaluate survivors on validation pairs
-        stage2_results = []
-        for c, _ in survivors:
+        survivor_cols = [c for c, _ in survivors]
+        val_drops = []
+        for c in survivor_cols:
             orig = probe.simulate_column_crush(layer_idx, c)
             try:
-                m_val = probe.compute_per_sample_margins(val_pairs, pad_id=pad_id)
-                drop_val = (val_baseline - m_val).mean().item()
+                m_val = probe.compute_per_sample_margins(val_pairs, batch_size=32, pad_id=pad_id)
+                val_drops.append((val_baseline - m_val).mean().item())
             finally:
                 probe.restore_column(layer_idx, c, orig)
+
+        calib_drop_lookup = dict(cand_drops_stage1)
+        stage2_results = []
+        for c, drop_val in zip(survivor_cols, val_drops):
             z = (drop_val - mu_r) / (sigma_r + 1e-8)
             stage2_results.append({
                 "layer": layer_idx,
                 "column": c,
-                "drop_calib": next(d for cc, d in cand_drops_stage1 if cc == c),
+                "drop_calib": calib_drop_lookup.get(c, 0.0),
                 "drop_val": drop_val,
                 "z_score": z,
                 "p_value": float(1.0 - norm.cdf(z)),
@@ -290,7 +298,7 @@ def run_ablation(
 
     # Baseline
     eval_pairs = calib_pairs[:CFG.ablation_eval_pairs]
-    base_margins = probe.compute_per_sample_margins(eval_pairs, pad_id=pad_id)
+    base_margins = probe.compute_per_sample_margins(eval_pairs, batch_size=32, pad_id=pad_id)
     base_margin = float(base_margins.mean().item())
     base_test = evaluate_model(model, tokenizer, test_samples)
     base_acc = base_test["accuracy"]
@@ -309,7 +317,7 @@ def run_ablation(
         # Anchor run
         saved = crush_many(probe, subset)
         try:
-            anchor_margins = probe.compute_per_sample_margins(eval_pairs, pad_id=pad_id)
+            anchor_margins = probe.compute_per_sample_margins(eval_pairs, batch_size=32, pad_id=pad_id)
             anchor_margin = float(anchor_margins.mean().item())
             anchor_test = evaluate_model(model, tokenizer, test_samples)
             anchor_acc = anchor_test["accuracy"]
@@ -326,7 +334,7 @@ def run_ablation(
             rand_neurons = sample_random_neurons(K, subset, probe.intermediate_size, rng)
             saved_r = crush_many(probe, rand_neurons)
             try:
-                rm = probe.compute_per_sample_margins(eval_pairs, pad_id=pad_id)
+                rm = probe.compute_per_sample_margins(eval_pairs, batch_size=32, pad_id=pad_id)
                 rand_margin = float(rm.mean().item())
                 # Test accuracy is expensive — only run for a sub-sample of trials to save time
                 if trial < min(10, CFG.n_random_trials):
