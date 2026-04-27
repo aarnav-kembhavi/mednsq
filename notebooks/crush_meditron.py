@@ -18,7 +18,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # =====================================================================
 # CONFIG
 # =====================================================================
-MODEL_NAME = "epfl-llm/meditron-2.5-8b"
+MODEL_NAME = "OpenMeditron/Meditron3-Qwen2.5-7B"
 N_SAMPLES = 120
 BATCH_SIZE = 8
 SEED = 42
