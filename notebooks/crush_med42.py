@@ -1,511 +1,448 @@
 """
-Multi-anchor down_proj column crush evaluation for Med42 (Llama3-Med42-8B).
+Neuron Ablation Sweep on Med42-v2 (8B)
+=======================================
+Progressively ablates anchor neurons vs random neurons on MedQA.
+Compares accuracy and logit margin drops.
 
-Same evaluation flow, batching, and margin logic as run_phi3_anchor_ablation.py;
-only model loading, down_proj access, and anchor list differ.
+Base architecture: Llama-3-8B
+  - num_hidden_layers = 32
+  - hidden_size       = 4096
+  - intermediate_size = 14336
 """
 
-from __future__ import annotations
-
 import os
-
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
+import gc
 import random
-import sys
-from typing import Any, Dict, List, Optional, Tuple
-
 import numpy as np
 import torch
 import torch.nn.functional as F
+from collections import defaultdict
+from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-
-class Tee:
-    def __init__(self, file_path):
-        self.file = open(file_path, "w", encoding="utf-8")
-        self.stdout = sys.stdout
-
-    def write(self, data):
-        self.stdout.write(data)
-        self.file.write(data)
-
-    def flush(self):
-        self.stdout.flush()
-        self.file.flush()
-
-
-sys.stdout = Tee("crushing_med42_full.log")
-sys.stderr = sys.stdout
-
-
-# ----------------------------
-# SECTION 1: Config
-# ----------------------------
-
+# =====================================================================
+# CONFIG
+# =====================================================================
 MODEL_NAME = "m42-health/Llama3-Med42-8B"
-
-# Batching constant (preserve default)
+N_SAMPLES = 120
 BATCH_SIZE = 8
+SEED = 42
+K_VALUES = [1, 2, 4, 8, 16, 32]   # max 32 since len(ANCHORS) = 38
+N_RANDOM_TRIALS = 20
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
 
-# Tokenizer padding id is set once after tokenizer load.
-PAD_TOKEN_ID: int = 0
-
-N_RANDOM_TRIALS = 50
-
-ANCHOR_RECORDS_RAW: List[Tuple[int, int, float]] = [
-    (20, 4299, 0.10),
-    (19, 7232, 0.11),
-    (14, 8, 0.10),
-    (17, 7522, 0.06),
-    (18, 7417, 0.05),
-    (13, 2590, 0.05),
-    (20, 3476, 0.03),
-    (15, 2808, 0.03),
-    (13, 4542, 0.03),
-    (16, 9215, 0.03),
-    (18, 10857, 0.03),
-    (18, 2694, 0.03),
-    (14, 318, 0.03),
-    (15, 1706, 0.03),
-    (17, 13385, 0.03),
-    (20, 10638, 0.02),
-    (12, 1493, 0.08),
-    (12, 2976, 0.02),
-    (12, 1780, 0.02),
-    (13, 4216, 0.02),
-    (13, 1724, 0.02),
-    (14, 12639, 0.02),
-    (15, 11853, 0.02),
-    (15, 1283, 0.02),
-    (15, 10813, 0.02),
-    (16, 8902, 0.02),
-    (16, 13791, 0.02),
-    (16, 10142, 0.01),
-    (16, 6737, 0.01),
-    (17, 10284, 0.02),
-    (17, 8887, 0.01),
-    (17, 863, 0.01),
-    (19, 9770, 0.02),
-    (19, 1498, 0.02),
-    (20, 5270, 0.02),
-    (20, 2786, 0.01),
-    (15, 6589, 0.01),
-    (15, 2295, 0.01),
+# Med42 anchor list: (layer, column), sorted by descending mean drop
+ANCHORS = [
+    (19, 7232),   (20, 4299),   (14, 8),      (12, 1493),   (17, 7522),
+    (11, 11902),  (13, 2590),   (18, 7417),   (13, 4542),   (14, 318),
+    (15, 1706),   (15, 2808),   (16, 9215),   (17, 13385),  (18, 10857),
+    (18, 2694),   (20, 3476),   (12, 2976),   (12, 1780),   (13, 4216),
+    (13, 1724),   (14, 12639),  (15, 11853),  (15, 1283),   (16, 8902),
+    (16, 13791),  (17, 10284),  (19, 9770),   (19, 1498),   (20, 5270),
+    (20, 10638),  (15, 6589),   (15, 2295),   (16, 10142),  (16, 6737),
+    (17, 8887),   (17, 863),    (20, 2786),
 ]
 
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
 
-def _repo_root() -> str:
-    """Return repo root; when script lives under notebooks/, return parent dir."""
-    path = os.path.abspath(__file__)
-    dirname = os.path.dirname(path)
-    if os.path.basename(dirname) == "notebooks":
-        return os.path.dirname(dirname)
-    return dirname
+# =====================================================================
+# MODEL LOADING
+# =====================================================================
+print(f"Loading {MODEL_NAME} on {DEVICE} ...")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, use_fast=True)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+tokenizer.padding_side = "left"
 
+load_kwargs = {
+    "torch_dtype": DTYPE,
+    "low_cpu_mem_usage": True,
+}
+if DEVICE == "cuda":
+    load_kwargs["device_map"] = "auto"
 
-def _ensure_import_paths() -> None:
-    root = _repo_root()
-    notebooks = os.path.join(root, "notebooks")
-    if notebooks not in sys.path:
-        sys.path.insert(0, notebooks)
-    if root not in sys.path:
-        sys.path.insert(0, root)
-
-
-def log_progress(text: str) -> None:
-    with open("experiment_progress.log", "a", encoding="utf-8") as f:
-        f.write(text + "\n")
-
-
-def _set_reproducible(seed: int) -> None:
-    torch.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, **load_kwargs)
+if DEVICE == "cpu":
+    model.to("cpu")
+model.eval()
 
 
-def _get_med42_layers(model) -> List[Any]:
-    if not hasattr(model, "model") or not hasattr(model.model, "layers"):
-        raise RuntimeError(
-            "Med42 architecture check failed: expected model.model.layers"
-        )
-    return list(model.model.layers)
-
-
-def _med42_down_proj_weight(model, layer_idx: int) -> torch.Tensor:
-    """Llama-style: layer_stack[layer].mlp.down_proj.weight"""
-    layers = _get_med42_layers(model)
-    if layer_idx < 0 or layer_idx >= len(layers):
-        raise IndexError(f"layer_idx out of range: {layer_idx}")
-    layer = layers[layer_idx]
-    if not hasattr(layer, "mlp") or not hasattr(layer.mlp, "down_proj"):
-        raise RuntimeError(
-            f"Med42 architecture check failed at layer {layer_idx}: "
-            "expected layer.mlp.down_proj"
-        )
-    return layer.mlp.down_proj.weight
-
-
-# ----------------------------
-# SECTION 2: Data + batching
-# ----------------------------
-
-def _assert_adv_pairs_shape(adv_pairs: List[Dict[str, Any]]) -> None:
-    if not adv_pairs:
-        raise RuntimeError("adv_pairs is empty. Cannot run EMS or experiments.")
-    required = {
-        "input_ids",
-        "attention_mask",
-        "pos_id",
-        "neg_id",
-        "safe_input_ids",
-        "safe_attention_mask",
-    }
-    missing_any = required - set(adv_pairs[0].keys())
-    if missing_any:
-        raise RuntimeError(
-            f"adv_pairs[0] missing required keys: {sorted(list(missing_any))}"
-        )
-
-
-def _assert_letter_token_ids(letter_token_ids: torch.Tensor) -> None:
-    if not isinstance(letter_token_ids, torch.Tensor):
-        raise TypeError("letter_token_ids must be a torch.Tensor")
-    if letter_token_ids.ndim != 1 or letter_token_ids.numel() != 4:
-        raise RuntimeError(
-            f"letter_token_ids must be shape [4], got {tuple(letter_token_ids.shape)}"
-        )
-    if letter_token_ids.dtype not in (torch.int64, torch.long):
-        raise RuntimeError(f"letter_token_ids must be int64, got {letter_token_ids.dtype}")
-    if (letter_token_ids < 0).any().item():
-        raise RuntimeError("letter_token_ids contains negative ids")
-
-
-def _answer_positions_batch(
-    input_ids: torch.Tensor,
-    seq_lens: List[int],
-    letter_token_ids: torch.Tensor,
-) -> List[Optional[int]]:
+# =====================================================================
+# LOCATE MLP MODULES (no hardcoding)
+# =====================================================================
+def discover_mlp_modules(model):
     """
-    For each sample, find the last position where input_ids equals any letter token (A/B/C/D).
-    Returns list of answer_idx per sample; None for samples with no answer token.
+    Walk the model and find per-layer MLP blocks.
+    For Llama-3 / Qwen2.5: layer.mlp has gate_proj, up_proj, down_proj.
+    We hook the INPUT to down_proj — that is the post-SiLU, post-gating
+    neuron vector of size = intermediate_size.
     """
-    letter_set = set(int(x) for x in letter_token_ids.cpu().tolist())
-    result: List[Optional[int]] = []
-    for i in range(input_ids.shape[0]):
-        L = int(seq_lens[i])
-        ids_slice = input_ids[i, :L].cpu().tolist()
-        positions = [j for j in range(L) if ids_slice[j] in letter_set]
-        if not positions:
-            result.append(None)
+    layer_modules = {}
+    roots = []
+    if hasattr(model, "model") and hasattr(model.model, "layers"):
+        roots.append(("model.model.layers", model.model.layers))
+    elif hasattr(model, "transformer") and hasattr(model.transformer, "h"):
+        roots.append(("model.transformer.h", model.transformer.h))
+    else:
+        for name, mod in model.named_modules():
+            if isinstance(mod, torch.nn.ModuleList) and len(mod) > 8:
+                roots.append((name, mod))
+                break
+
+    if not roots:
+        raise RuntimeError("Could not locate decoder layers in model.")
+
+    root_name, layers = roots[0]
+    print(f"Found decoder stack at: {root_name} (n_layers = {len(layers)})")
+
+    for i, layer in enumerate(layers):
+        if hasattr(layer, "mlp") and hasattr(layer.mlp, "down_proj"):
+            layer_modules[i] = layer.mlp.down_proj
+        elif hasattr(layer, "mlp") and hasattr(layer.mlp, "c_proj"):
+            layer_modules[i] = layer.mlp.c_proj
+        else:
+            raise RuntimeError(f"Layer {i} MLP has no down_proj/c_proj")
+    return layer_modules
+
+
+layer_to_module = discover_mlp_modules(model)
+N_LAYERS = len(layer_to_module)
+
+sample_idx = list(layer_to_module.keys())[0]
+sample_mod = layer_to_module[sample_idx]
+INTERMEDIATE_SIZE = sample_mod.in_features
+HIDDEN_SIZE = sample_mod.out_features
+print(f"MLP down_proj: in={INTERMEDIATE_SIZE} (neurons), out={HIDDEN_SIZE} (hidden)")
+print(f"Hooking PRE-FORWARD on down_proj => zeroing post-activation neuron columns.\n")
+
+# ---- Sanity check anchors against the actual architecture ----
+max_layer = max(l for l, _ in ANCHORS)
+max_col = max(c for _, c in ANCHORS)
+assert max_layer < N_LAYERS, (
+    f"Anchor layer {max_layer} >= N_LAYERS {N_LAYERS}"
+)
+assert max_col < INTERMEDIATE_SIZE, (
+    f"Anchor column {max_col} >= INTERMEDIATE_SIZE {INTERMEDIATE_SIZE}. "
+    f"Anchors do not match this model's architecture."
+)
+print(f"Anchor sanity: max_layer={max_layer}/{N_LAYERS-1}, "
+      f"max_col={max_col}/{INTERMEDIATE_SIZE-1}  OK")
+print(f"Anchor count: {len(ANCHORS)}\n")
+
+
+# =====================================================================
+# CRUSHING MECHANISM (forward pre-hooks on down_proj input)
+# =====================================================================
+class NeuronAblator:
+    """
+    Manages forward_pre_hooks on MLP down_proj modules.
+    Input to down_proj is [batch, seq, intermediate_size] — we zero
+    the specified columns (neurons) per layer.
+    """
+    def __init__(self, layer_to_module):
+        self.layer_to_module = layer_to_module
+        self.handles = []
+
+    def _make_hook(self, neuron_idx_tensor):
+        def pre_hook(module, args):
+            x = args[0]
+            x = x.clone()
+            x[..., neuron_idx_tensor] = 0.0
+            return (x,) + args[1:]
+        return pre_hook
+
+    def attach(self, neurons):
+        """neurons: list of (layer, column)"""
+        by_layer = defaultdict(list)
+        for (layer, col) in neurons:
+            by_layer[layer].append(col)
+        for layer, cols in by_layer.items():
+            mod = self.layer_to_module[layer]
+            idx = torch.tensor(cols, dtype=torch.long, device=DEVICE)
+            h = mod.register_forward_pre_hook(self._make_hook(idx))
+            self.handles.append(h)
+
+    def remove(self):
+        for h in self.handles:
+            h.remove()
+        self.handles = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.remove()
+
+
+# =====================================================================
+# DATA: MedQA
+# =====================================================================
+def load_medqa(n_samples=N_SAMPLES, seed=SEED):
+    print("Loading MedQA ...")
+    candidates = [
+        ("bigbio/med_qa", "med_qa_en_4options_source"),
+        ("bigbio/med_qa", "med_qa_en_4options_bigbio_qa"),
+        ("GBaker/MedQA-USMLE-4-options", None),
+    ]
+    ds = None
+    for name, config in candidates:
+        try:
+            ds = load_dataset(name, config) if config else load_dataset(name)
+            print(f"  Loaded: {name} ({config})")
+            break
+        except Exception as e:
+            print(f"  Failed {name}/{config}: {e}")
+    if ds is None:
+        raise RuntimeError("Could not load any MedQA variant.")
+
+    split = "test" if "test" in ds else ("validation" if "validation" in ds else "train")
+    raw = ds[split]
+
+    rng = random.Random(seed)
+    indices = list(range(len(raw)))
+    rng.shuffle(indices)
+    indices = indices[:n_samples]
+
+    samples = []
+    for i in indices:
+        ex = raw[i]
+        if "question" in ex and "options" in ex:
+            q = ex["question"]
+            opts = ex["options"]
+            if isinstance(opts, dict):
+                keys = sorted(opts.keys())
+                choices = [opts[k] for k in keys]
+                letters = keys
+            elif isinstance(opts, list) and len(opts) > 0 and isinstance(opts[0], dict):
+                choices = [o.get("value", o.get("text", "")) for o in opts]
+                letters = [o.get("key", chr(65 + j)) for j, o in enumerate(opts)]
+            else:
+                choices = list(opts)
+                letters = [chr(65 + j) for j in range(len(choices))]
+            if ex.get("answer_idx") is not None:
+                ans = ex.get("answer_idx")
+            elif ex.get("answer") is not None:
+                ans = ex.get("answer")
+            else:
+                ans = ex.get("correct_answer")
+            if isinstance(ans, str) and ans in letters:
+                correct = letters.index(ans)
+            elif isinstance(ans, int):
+                correct = ans
+            elif isinstance(ans, str) and ans in choices:
+                correct = choices.index(ans)
+            else:
+                txt = ex.get("answer", "")
+                correct = choices.index(txt) if txt in choices else 0
+        elif "question" in ex and "choices" in ex:
+            q = ex["question"]
+            choices = ex["choices"]
+            letters = [chr(65 + j) for j in range(len(choices))]
+            correct = ex.get("answer", 0)
+            if isinstance(correct, str):
+                correct = letters.index(correct) if correct in letters else 0
+        else:
             continue
-        answer_idx = max(positions)
-        assert answer_idx >= 0, f"answer_idx {answer_idx} < 0"
-        assert answer_idx < L, f"answer_idx {answer_idx} >= seq_len {L}"
-        result.append(answer_idx)
-    return result
+
+        if len(choices) < 2:
+            continue
+        if not (0 <= int(correct) < len(choices)):
+            continue
+        if correct >= 4:
+            continue
+        samples.append({
+            "question": q,
+            "choices": choices[:4],
+            "letters": letters[:4],
+            "correct": correct,
+        })
+    print(f"  Selected {len(samples)} samples")
+    return samples
 
 
-def batched_forward_pass(
-    model,
-    adv_pairs: List[Dict[str, Any]],
-    letter_token_ids: torch.Tensor,
-    tokenizer: Any = None,
-) -> Tuple[torch.Tensor, List[int]]:
-    """
-    Compute per-sample margins (pos - neg) and A/B/C/D predictions in mini-batches.
+def format_prompt(sample):
+    letters = sample["letters"]
+    body = sample["question"].strip() + "\n\n"
+    for L, c in zip(letters, sample["choices"]):
+        body += f"{L}. {c}\n"
+    body += "\nAnswer:"
+    return body
 
-    Returns:
-      margins: float32 tensor of shape [N]
-      predictions: list[int] where each entry is in {0,1,2,3} (index into A/B/C/D)
-    """
-    if not adv_pairs:
-        raise RuntimeError("batched_forward_pass: adv_pairs is empty")
-    _assert_letter_token_ids(letter_token_ids)
 
-    device = next(model.parameters()).device
-    letter_token_ids = letter_token_ids.to(device)
+# =====================================================================
+# EVALUATION
+# =====================================================================
+_choice_token_cache = {}
 
-    margins: List[float] = []
-    preds: List[int] = []
+def get_choice_token_ids(letters):
+    key = tuple(letters)
+    if key in _choice_token_cache:
+        return _choice_token_cache[key]
+    ids = []
+    for L in letters:
+        toks = tokenizer.encode(" " + L, add_special_tokens=False)
+        if len(toks) == 0:
+            toks = tokenizer.encode(L, add_special_tokens=False)
+        ids.append(toks[-1])
+    _choice_token_cache[key] = ids
+    return ids
 
-    vocab_size = getattr(getattr(model, "config", None), "vocab_size", None)
-    if vocab_size is not None:
-        if int(letter_token_ids.max().item()) >= int(vocab_size):
-            raise RuntimeError(
-                f"Invalid letter_token_ids: max={int(letter_token_ids.max().item())} "
-                f">= vocab_size={int(vocab_size)}"
-            )
 
-    for start in range(0, len(adv_pairs), BATCH_SIZE):
-        batch = adv_pairs[start : start + BATCH_SIZE]
-        if not batch:
+@torch.no_grad()
+def evaluate(samples, batch_size=BATCH_SIZE):
+    n_correct = 0
+    margins = []
+
+    for start in range(0, len(samples), batch_size):
+        batch = samples[start:start + batch_size]
+        prompts = [format_prompt(s) for s in batch]
+
+        enc = tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=2048,
+        ).to(DEVICE)
+
+        out = model(**enc)
+        logits = out.logits  # [B, T, V]
+        last_logits = logits[:, -1, :]
+
+        for i, s in enumerate(batch):
+            choice_ids = get_choice_token_ids(s["letters"])
+            choice_logits = last_logits[i, choice_ids].float()
+            pred = int(torch.argmax(choice_logits).item())
+            correct_idx = s["correct"]
+
+            if pred == correct_idx:
+                n_correct += 1
+
+            correct_logit = choice_logits[correct_idx].item()
+            mask = torch.ones_like(choice_logits, dtype=torch.bool)
+            mask[correct_idx] = False
+            other_max = choice_logits[mask].max().item()
+            margins.append(correct_logit - other_max)
+
+    acc = n_correct / len(samples)
+    mean_margin = float(np.mean(margins))
+    return acc, mean_margin
+
+
+# =====================================================================
+# RANDOM NEURON SAMPLING (matched layer distribution)
+# =====================================================================
+def sample_random_neurons(k, anchors_subset, rng):
+    anchor_set = set(anchors_subset)
+    layer_counts = defaultdict(int)
+    for (l, _) in anchors_subset:
+        layer_counts[l] += 1
+
+    chosen = []
+    chosen_set = set()
+    for layer, count in layer_counts.items():
+        attempts = 0
+        added = 0
+        while added < count and attempts < count * 100:
+            col = rng.randrange(INTERMEDIATE_SIZE)
+            cand = (layer, col)
+            if cand not in anchor_set and cand not in chosen_set:
+                chosen.append(cand)
+                chosen_set.add(cand)
+                added += 1
+            attempts += 1
+    return chosen
+
+
+# =====================================================================
+# MAIN SWEEP
+# =====================================================================
+def main():
+    samples = load_medqa(N_SAMPLES, SEED)
+
+    print("\n=== Baseline (no ablation) ===")
+    base_acc, base_margin = evaluate(samples)
+    print(f"Baseline accuracy: {base_acc:.4f}")
+    print(f"Baseline mean margin: {base_margin:.4f}")
+
+    rng = random.Random(SEED)
+    results = {}
+
+    for K in K_VALUES:
+        if K > len(ANCHORS):
+            print(f"\nSkipping K={K} (only {len(ANCHORS)} anchors available)")
             continue
 
-        seq_lens = [int(pair["input_ids"].shape[1]) for pair in batch]
-        if any(l <= 0 for l in seq_lens):
-            raise RuntimeError(f"Invalid sequence lengths in batch: {seq_lens}")
-        max_len = max(seq_lens)
+        print(f"\n=== K = {K} ===")
+        anchor_subset = ANCHORS[:K]
 
-        ids_list: List[torch.Tensor] = []
-        mask_list: List[torch.Tensor] = []
-        for pair in batch:
-            ids = pair["input_ids"]
-            mask = pair["attention_mask"]
-            if ids.ndim != 2 or mask.ndim != 2:
-                raise RuntimeError(
-                    "Expected input_ids/attention_mask to be rank-2 tensors "
-                    f"got ids.ndim={ids.ndim} mask.ndim={mask.ndim}"
-                )
-            if ids.shape != mask.shape:
-                raise RuntimeError(
-                    f"input_ids and attention_mask shape mismatch: {ids.shape} vs {mask.shape}"
-                )
-            ids = ids.to(device)
-            mask = mask.to(device)
-            pad_len = max_len - ids.shape[1]
-            if pad_len > 0:
-                ids = F.pad(ids, (0, pad_len), value=int(PAD_TOKEN_ID))
-                mask = F.pad(mask, (0, pad_len), value=0)
-            ids_list.append(ids)
-            mask_list.append(mask)
+        # ---- Anchor run ----
+        with NeuronAblator(layer_to_module) as ab:
+            ab.attach(anchor_subset)
+            anchor_acc, anchor_margin = evaluate(samples)
 
-        input_ids = torch.cat(ids_list, dim=0)
-        attention_mask = torch.cat(mask_list, dim=0)
+        # ---- Random trials ----
+        rand_accs = []
+        rand_margins = []
+        for trial in range(N_RANDOM_TRIALS):
+            rand_neurons = sample_random_neurons(K, anchor_subset, rng)
+            with NeuronAblator(layer_to_module) as ab:
+                ab.attach(rand_neurons)
+                r_acc, r_margin = evaluate(samples)
+            rand_accs.append(r_acc)
+            rand_margins.append(r_margin)
 
-        answer_indices = _answer_positions_batch(input_ids, seq_lens, letter_token_ids)
+        rand_acc_mean = float(np.mean(rand_accs))
+        rand_acc_std = float(np.std(rand_accs))
+        rand_margin_mean = float(np.mean(rand_margins))
+        rand_margin_std = float(np.std(rand_margins))
 
-        with torch.no_grad():
-            out = model(input_ids=input_ids, attention_mask=attention_mask)
-            logits = out.logits  # [B, max_len, vocab]
+        anchor_acc_drop = base_acc - anchor_acc
+        rand_acc_drop = base_acc - rand_acc_mean
+        anchor_margin_drop = base_margin - anchor_margin
+        rand_margin_drop = base_margin - rand_margin_mean
 
-        for i, pair in enumerate(batch):
-            answer_idx = answer_indices[i]
-            if answer_idx is None:
-                margins.append(float("nan"))
-                preds.append(-1)
-                continue
-            seq_len_i = int(seq_lens[i])
-            assert answer_idx >= 0, f"answer_idx {answer_idx} < 0"
-            assert answer_idx < seq_len_i, f"answer_idx {answer_idx} >= seq_len {seq_len_i}"
-            token_logits = logits[i, answer_idx, :]
-            pos_id = int(pair["pos_id"])
-            neg_id = int(pair["neg_id"])
-            if vocab_size is not None and (pos_id >= vocab_size or neg_id >= vocab_size):
-                raise RuntimeError(
-                    f"Invalid pos/neg token ids for vocab: pos_id={pos_id} neg_id={neg_id} vocab_size={vocab_size}"
-                )
-            if pos_id < 0 or neg_id < 0:
-                raise RuntimeError(f"Invalid pos/neg token ids: pos_id={pos_id} neg_id={neg_id}")
+        print(f"Anchor accuracy: {anchor_acc:.4f}")
+        print(f"Random accuracy: {rand_acc_mean:.4f} ± {rand_acc_std:.4f}")
+        print(f"Accuracy drop (anchor): {anchor_acc_drop:+.4f}")
+        print(f"Accuracy drop (random): {rand_acc_drop:+.4f}")
+        print(f"Anchor mean margin drop: {anchor_margin_drop:+.4f}")
+        print(f"Random mean margin drop: {rand_margin_drop:+.4f} "
+              f"(margin std={rand_margin_std:.4f})")
+        print(f"Diff (anchor - random) accuracy drop: "
+              f"{anchor_acc_drop - rand_acc_drop:+.4f}")
+        print(f"Diff (anchor - random) margin drop:   "
+              f"{anchor_margin_drop - rand_margin_drop:+.4f}")
 
-            margin = (token_logits[pos_id] - token_logits[neg_id]).item()
-            margins.append(float(margin))
+        results[K] = {
+            "anchor_acc": anchor_acc,
+            "anchor_margin": anchor_margin,
+            "rand_acc_mean": rand_acc_mean,
+            "rand_acc_std": rand_acc_std,
+            "rand_margin_mean": rand_margin_mean,
+            "rand_margin_std": rand_margin_std,
+        }
 
-            letter_logits = token_logits.index_select(0, letter_token_ids)
-            pred_idx = int(torch.argmax(letter_logits).item())
-            preds.append(pred_idx)
-
-    return torch.tensor(margins, dtype=torch.float32), preds
-
-
-def simulate_column_crush_med42(model, layer_idx: int, col_idx: int) -> torch.Tensor:
-    weight = _med42_down_proj_weight(model, layer_idx)
-    if col_idx < 0 or col_idx >= weight.shape[1]:
-        raise IndexError(f"col_idx out of range: {col_idx} for weight.shape={tuple(weight.shape)}")
-    original_col = weight[:, col_idx].detach().clone()
-    scale = original_col.abs().mean()
-    crushed = original_col.sign() * scale
-    with torch.no_grad():
-        weight[:, col_idx] = crushed.to(dtype=weight.dtype, device=weight.device)
-    return original_col
-
-
-def restore_column_med42(model, layer_idx: int, col_idx: int, original_col: torch.Tensor) -> float:
-    weight = _med42_down_proj_weight(model, layer_idx)
-    with torch.no_grad():
-        weight[:, col_idx] = original_col.to(dtype=weight.dtype, device=weight.device)
-    restored = weight[:, col_idx].detach().to(original_col.dtype)
-    max_diff = float((restored - original_col).abs().max().item())
-    return max_diff
-
-
-def compute_per_sample_margins_full(
-    model,
-    adv_pairs: List[Dict[str, Any]],
-    letter_token_ids: torch.Tensor,
-    tokenizer: Any = None,
-) -> torch.Tensor:
-    """Full margin vector (same as former Phi3Probe.compute_per_sample_margins)."""
-    if not adv_pairs:
-        return torch.zeros(0, dtype=torch.float32)
-    margins, _ = batched_forward_pass(model, adv_pairs, letter_token_ids, tokenizer=tokenizer)
-    return margins
-
-
-def mean_drop_for_set(
-    model,
-    adv_pairs: List[Dict[str, Any]],
-    letter_token_ids: torch.Tensor,
-    tokenizer: Any,
-    neuron_set: List[Tuple[int, int]],
-    baseline_margins: torch.Tensor,
-) -> Tuple[float, float, torch.Tensor]:
-    saved: List[Tuple[int, int, torch.Tensor]] = []
-    try:
-        for l, c in neuron_set:
-            orig = simulate_column_crush_med42(model, l, c)
-            saved.append((l, c, orig))
-        crushed_margins, _ = batched_forward_pass(
-            model, adv_pairs, letter_token_ids, tokenizer=tokenizer
-        )
-    finally:
-        for l, c, orig in saved:
-            restore_column_med42(model, l, c, orig)
-
-    baseline_margins = baseline_margins.float()
-    crushed_margins = crushed_margins.float()
-    if crushed_margins.device != baseline_margins.device:
-        crushed_margins = crushed_margins.to(baseline_margins.device)
-    valid = ~torch.isnan(baseline_margins) & ~torch.isnan(crushed_margins)
-    drops = baseline_margins[valid] - crushed_margins[valid]
-    if drops.numel() == 0:
-        z = torch.zeros(0, dtype=torch.float32, device=baseline_margins.device)
-        return 0.0, 0.0, z
-    mean_drop = float(drops.mean().item())
-    std_drop = float(drops.std(unbiased=False).item())
-    return mean_drop, std_drop, drops
-
-
-def enumerate_non_anchor_neurons(
-    model, anchor_set: set[Tuple[int, int]]
-) -> List[Tuple[int, int]]:
-    out: List[Tuple[int, int]] = []
-    n_layers = len(_get_med42_layers(model))
-    for l in range(n_layers):
-        w = _med42_down_proj_weight(model, l)
-        n_cols = int(w.shape[1])
-        for c in range(n_cols):
-            if (l, c) not in anchor_set:
-                out.append((l, c))
-    return out
-
-
-def run_dataset_evaluation(
-    dataset_name: str,
-    model: Any,
-    tokenizer: Any,
-    letter_token_ids: torch.Tensor,
-    calibration_size: int,
-    eval_size: int,
-    seed: int,
-) -> None:
-    _set_reproducible(seed)
-
-    from mednsq_data import load_mcq_dataset, build_adversarial_pairs
-
-    samples = load_mcq_dataset(n_total=calibration_size + eval_size)
-    random.shuffle(samples)
-    calibration = samples[:calibration_size]
-    _evaluation = samples[calibration_size : calibration_size + eval_size]
-
-    adv_pairs = build_adversarial_pairs(model, tokenizer, calibration, n_calib=len(calibration))
-    _assert_adv_pairs_shape(adv_pairs)
-
-    baseline = compute_per_sample_margins_full(model, adv_pairs, letter_token_ids, tokenizer=tokenizer)
-
-    anchors_sorted = sorted(ANCHOR_RECORDS_RAW, key=lambda x: float(x[2]), reverse=True)
-    anchor_neurons_full = [(int(l), int(c)) for (l, c, _) in anchors_sorted]
-    anchor_set = set(anchor_neurons_full)
-
-    candidate_neurons = enumerate_non_anchor_neurons(model, anchor_set)
-
-    max_k = len(anchor_neurons_full)
-    k_values: List[int] = []
-    for k in [4, 8, 16, 32, max_k]:
-        if k <= max_k and k not in k_values:
-            k_values.append(k)
-
-    print(f"Dataset: {dataset_name}")
-
-    for k in k_values:
-        if k > len(candidate_neurons):
-            raise RuntimeError(f"Not enough candidate neurons for k={k}")
-
-        anchor_subset = anchor_neurons_full[:k]
-
-        anchor_mean, anchor_std, _ = mean_drop_for_set(
-            model,
-            adv_pairs,
-            letter_token_ids,
-            tokenizer,
-            anchor_subset,
-            baseline,
-        )
-
-        random_drops_list = []
-        for _ in range(N_RANDOM_TRIALS):
-            subset = random.sample(candidate_neurons, k)
-
-            rand_mean, _, _ = mean_drop_for_set(
-                model,
-                adv_pairs,
-                letter_token_ids,
-                tokenizer,
-                subset,
-                baseline,
-            )
-            random_drops_list.append(rand_mean)
-
-        random_mean = float(np.mean(random_drops_list))
-        random_std = float(np.std(random_drops_list))
-
-        print(f"\n=== K = {k} ===")
-        print(f"Anchor mean drop: {anchor_mean}")
-        print(f"Random mean drop: {random_mean} ± {random_std}")
-        print(f"Diff: {anchor_mean - random_mean}")
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
-    if torch.cuda.is_available():
         torch.cuda.empty_cache()
-        torch.cuda.synchronize()
+        gc.collect()
 
-
-def main() -> None:
-    _ensure_import_paths()
-
-    from mednsq_eval import _get_letter_token_ids
-
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    global PAD_TOKEN_ID
-    PAD_TOKEN_ID = int(getattr(tokenizer, "pad_token_id", None) or getattr(tokenizer, "eos_token_id", 0) or 0)
-
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-    model.eval()
-
-    letter_token_ids = _get_letter_token_ids(tokenizer)
-    _assert_letter_token_ids(letter_token_ids)
-    letter_token_ids = letter_token_ids.to(next(model.parameters()).device)
-
-    for dataset_name in ("mcq",):
-        run_dataset_evaluation(
-            dataset_name=dataset_name,
-            model=model,
-            tokenizer=tokenizer,
-            letter_token_ids=letter_token_ids,
-            calibration_size=400,
-            eval_size=60,
-            seed=1,
-        )
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+    print(f"Baseline acc={base_acc:.4f}  margin={base_margin:.4f}")
+    print(f"{'K':>4}  {'AnchAcc':>8}  {'RandAcc':>8}  {'ΔAccA':>7}  "
+          f"{'ΔAccR':>7}  {'ΔMarA':>7}  {'ΔMarR':>7}")
+    for K, r in results.items():
+        print(f"{K:>4}  "
+              f"{r['anchor_acc']:>8.4f}  "
+              f"{r['rand_acc_mean']:>8.4f}  "
+              f"{base_acc - r['anchor_acc']:>+7.4f}  "
+              f"{base_acc - r['rand_acc_mean']:>+7.4f}  "
+              f"{base_margin - r['anchor_margin']:>+7.4f}  "
+              f"{base_margin - r['rand_margin_mean']:>+7.4f}")
 
 
 if __name__ == "__main__":
