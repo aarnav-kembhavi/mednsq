@@ -31,27 +31,28 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from mednsq_data import build_adversarial_pairs, load_mcq_dataset
 from mednsq_probe import MedNSQProbe
 
-
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 # =====================================================================
 # MODEL + ANCHORS
 # =====================================================================
 # Med42 anchors from validated discovery pipeline (ablation_med42_8b.json,
 # z=259 at K=32 on MedQA). Top 64, sorted by drop_val descending.
-MED42_ANCHORS: List[Tuple[int, int]] = [
-    (20,8153),(22,4572),(18,1539),(17,6857),(19,8682),(17,4970),(15,1192),
-    (9,10132),(18,10081),(12,8419),(19,747),(13,1545),(19,757),(9,8314),
-    (21,1332),(15,95),(11,4480),(17,2697),(15,9541),(18,1583),(16,3433),
-    (8,3347),(21,9373),(15,1827),(18,5631),(14,7080),(14,4189),(19,9222),
-    (8,3977),(16,1761),(16,4146),(12,1855),(17,7170),(14,2521),(17,10058),
-    (24,1444),(20,4459),(14,4132),(16,2056),(9,832),(16,4273),(8,5386),
-    (13,2345),(9,8192),(21,988),(12,1995),(10,1826),(8,2877),(17,7513),
-    (9,6724),(13,945),(16,8664),(10,3530),(8,1577),(10,183),(17,6148),
-    (15,209),(21,6065),(10,5422),(17,5353),(18,1277),(20,6146),(12,4067),
-    (16,6845),(15,1780),(10,8392)
+MEDITRON_ANCHORS: List[Tuple[int, int]] = [
+    (17,3451), (14,18336), (12,8109), (20,13290), (18,11555), (19,18147),
+    (17,16475), (14,9924), (13,14316), (19,8750), (24,12896), (17,7652),
+    (15,485), (19,9166), (23,5298), (22,9786), (24,10538), (17,4105),
+    (11,3558), (19,8257), (20,9629), (21,2951), (15,10749), (17,1105),
+    (11,10155), (22,1969), (20,18853), (24,16669), (19,10109), (12,11452),
+    (15,3642), (15,9396), (14,8180), (23,12030), (12,6127), (15,10782),
+    (15,16588), (16,4570), (24,13642), (15,10943), (15,3905), (13,14562),
+    (13,1151), (15,1639)
 ]
 
-MODEL_ID = "google/gemma-2b"
-MODEL_KEY: str = "gemma4b"
+MED42_ANCHORS = MEDITRON_ANCHORS  # Keep variable name for compatibility
+
+MODEL_ID = "Qwen/Qwen2.5-8B"
+MODEL_KEY: str = "qwen25_8b"
 
 
 @dataclass
@@ -450,11 +451,14 @@ def evaluate(cfg: EvalConfig) -> Dict[str, Any]:
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    # Qwen2.5 specific: ensure chat template doesn't interfere
+    tokenizer.chat_template = None  # Use base template for our prompts
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
-        torch_dtype=torch.float16,
+        torch_dtype=torch.bfloat16,  # Changed from float16 to bfloat16 for better 8B support
         device_map="auto",
         trust_remote_code=True,
+        low_cpu_mem_usage=True,  # Added
     )
     model.eval()
     probe = MedNSQProbe(model)
