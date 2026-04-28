@@ -1,32 +1,23 @@
 """
-End-to-end EMS pipeline for OpenMeditron/Meditron3-Qwen2.5-7B.
+End-to-end EMS pipeline for openmed-community/AFM-4.5B-OpenMed-RL-CoT.
 
-Steps:
-  1. Load model in bf16, load MedQA train/test splits.
-  2. Build adversarial calibration pairs from train.
-  3. For each layer in MIDDLE_LAYERS:
-       a. Forward-Taylor proxy ranks columns -> top STAGE1_TOPK candidates.
-       b. Stage 1: full-calibration column crush, keep columns with mean_drop > random baseline.
-       c. Stage 2: re-evaluate survivors on validation pairs (train held-out subset)
-          -> select anchors with z > Z_THRESHOLD.
-  4. Save anchors_meditron_qwen25_7b.json.
-  5. Ablation sweep on K in [1,2,4,8,16,32,64]:
-       - Anchor run: crush top-K anchors, measure margin drop on calib + accuracy on test.
-       - Random control: 30 trials, same-layer-distribution sampling, same crush.
-       - Report z-score, accuracy translation rate.
-  6. Save ablation_meditron_qwen25_7b.json.
-
-Designed for ~3-4 hours on a single A100 80GB.
+NOTE on architecture:
+  - AFM-4.5B uses ReLU^2 activation (not SwiGLU) and grouped-query attention.
+  - It is a custom architecture (model_type="arcee") requiring trust_remote_code.
+  - The MLP likely has up_proj + down_proj (no gate). The intervention is still
+    1-bit column crush on down_proj.weight — semantically the same as for
+    SwiGLU models (zeroing one neuron's contribution to the residual).
+  - LAYER RANGE BELOW IS A GUESS. Once the probe prints `layers=N` at startup,
+    edit `middle_layers` to cover the middle ~50% of layers.
 """
 
 import hashlib
 import inspect
 import json
-import math
 import os
 import random
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
@@ -49,20 +40,22 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "m42-health/Llama3-Med42-8B"
-    # Middle layers — Llama-3-8B has 32 layers; middle = 12..27 inclusive
-    middle_layers: Tuple[int, ...] = tuple(range(14, 27))
+    model_name: str = "openmed-community/AFM-4.5B-OpenMed-RL-CoT"
+    # PLACEHOLDER: AFM-4.5B layer count is not pre-confirmed.
+    # The probe prints `layers=N` at load. Adjust this range to cover ~middle 60%.
+    # Sensible default for a 4.5B model assuming 28-36 layers: middle ~range(10, 24).
+    middle_layers: Tuple[int, ...] = tuple(range(8, 24))
     seed: int = 42
 
     # Calibration / validation / test sizes
-    calib_size: int = 400         # adversarial pairs from MedQA train
-    val_size: int = 200           # held-out adversarial pairs (still from train, no overlap)
-    test_size: int = 300          # MedQA test split, used for ablation accuracy
+    calib_size: int = 400
+    val_size: int = 200
+    test_size: int = 300
 
     # Discovery
-    stage1_topk: int = 64        # forward-Taylor top-k per layer
-    stage1_eval_pairs: int = 80  # cheaper subset for stage 1
-    stage2_eval_pairs: int = 400  # full calib for stage 2
+    stage1_topk: int = 64
+    stage1_eval_pairs: int = 80
+    stage2_eval_pairs: int = 400
     random_baseline_cols: int = 32
     z_threshold: float = 4.0
     max_anchors: int = 64
@@ -70,13 +63,13 @@ class Config:
     # Ablation
     k_values: Tuple[int, ...] = (1, 2, 4, 8, 16, 32, 64)
     n_random_trials: int = 30
-    ablation_eval_pairs: int = 200  # margin drop measured on this subset of calib
-    ablation_test_size: int = 300   # accuracy on test split
+    ablation_eval_pairs: int = 200
+    ablation_test_size: int = 300
 
     # Output
-    discovery_file: str = "anchors_med42_8b.json"
-    ablation_file: str = "ablation_med42_8b.json"
-    log_file: str = "experiment_med42_8b.log"
+    discovery_file: str = "anchors_afm_openmed_4_5b.json"
+    ablation_file: str = "ablation_afm_openmed_4_5b.json"
+    log_file: str = "experiment_afm_openmed_4_5b.log"
 
     intervention_type: str = "column_crush_1bit"
 
@@ -108,6 +101,32 @@ def setup_perf() -> None:
     torch.set_float32_matmul_precision("high")
 
 
+def report_architecture(model, probe: MedNSQProbe) -> None:
+    """Print enough about the model to verify probe will work correctly."""
+    log("=" * 60)
+    log("ARCHITECTURE REPORT")
+    log("=" * 60)
+    log(f"Model class: {type(model).__name__}")
+    log(f"Config model_type: {getattr(model.config, 'model_type', 'unknown')}")
+    log(f"Hidden size: {probe.hidden_size}")
+    log(f"Intermediate size (= MLP neurons per layer): {probe.intermediate_size}")
+    log(f"Num layers: {len(probe.layers)}")
+    log(f"Num attention heads: {probe.num_heads}")
+
+    # Show structure of layer 0 MLP so we can verify probe attached correctly
+    layer0 = probe.layers[0]
+    if hasattr(layer0, "mlp"):
+        log(f"Layer 0 MLP submodules: {[name for name, _ in layer0.mlp.named_children()]}")
+    else:
+        log("Layer 0 has no .mlp attribute (probe may need adjustment)")
+
+    log(f"Configured middle_layers: {list(CFG.middle_layers)}")
+    if max(CFG.middle_layers) >= len(probe.layers):
+        log(f"WARNING: middle_layers includes layer {max(CFG.middle_layers)} but model has only {len(probe.layers)} layers!")
+        log("Edit CFG.middle_layers and rerun.")
+    log("=" * 60)
+
+
 # =====================================================================
 # DISCOVERY
 # =====================================================================
@@ -119,17 +138,14 @@ def discover_anchors(
     val_pairs: List[Dict[str, Any]],
     pad_id: int,
 ) -> Tuple[List[Dict[str, Any]], Dict[int, Dict[str, float]]]:
-    """Returns (anchors, layer_stats)."""
     log(f"Discovery start. Layers={list(CFG.middle_layers)} calib={len(calib_pairs)} val={len(val_pairs)}")
 
-    # Cache calib + val baseline margins
     calib_baseline = probe.compute_per_sample_margins(calib_pairs, pad_id=pad_id)
     val_baseline = probe.compute_per_sample_margins(val_pairs, pad_id=pad_id)
     log(f"Calib baseline margin mean={calib_baseline.mean():.3f} std={calib_baseline.std():.3f} "
         f"frac_neg={(calib_baseline < 0).float().mean():.2f}")
     log(f"Val baseline margin mean={val_baseline.mean():.3f} std={val_baseline.std():.3f}")
 
-    # Sanity: round-trip a column, verify margins identical after restore
     sanity_layer = CFG.middle_layers[0]
     log(f"Round-trip sanity: crushing layer={sanity_layer} col=0, restoring, comparing margins...")
     pre = probe.compute_per_sample_margins(calib_pairs[:32], pad_id=pad_id)
@@ -143,14 +159,12 @@ def discover_anchors(
 
     layer_stats: Dict[int, Dict[str, float]] = {}
     all_candidates: List[Dict[str, Any]] = []
-
     rng = random.Random(CFG.seed + 7)
 
     for layer_idx in CFG.middle_layers:
         t0 = time.time()
         log(f"--- Layer {layer_idx} ---")
 
-        # Stage 0: forward-Taylor scoring
         scores = probe.forward_taylor_scores(
             layer_idx=layer_idx,
             adv_pairs=calib_pairs,
@@ -161,15 +175,12 @@ def discover_anchors(
         candidate_cols = [int(c) for c in top_idx.tolist()]
         log(f"  Taylor top-{len(candidate_cols)} cols. score range=[{top_vals[-1]:.4f}, {top_vals[0]:.4f}]")
 
-        # Random baseline columns (from full population, NOT excluding top — overlap is ~1%)
         rand_cols = rng.sample(range(probe.intermediate_size), CFG.random_baseline_cols)
 
-        # Stage 1: evaluate candidates and randoms on a calib subset
         stage1_pairs = calib_pairs[:CFG.stage1_eval_pairs]
         stage1_baseline = calib_baseline[:CFG.stage1_eval_pairs]
 
         def eval_cols_batched(cols: List[int], pairs, baseline) -> List[float]:
-            """Crush each column, measure margin drop, restore. batch_size=32 keeps GPU fed."""
             drops = []
             for c in cols:
                 orig = probe.simulate_column_crush(layer_idx, c)
@@ -190,13 +201,11 @@ def discover_anchors(
             eval_cols_batched(candidate_cols, stage1_pairs, stage1_baseline),
         ))
 
-        # Keep candidates with positive drop above random mean
         survivors = [(c, d) for c, d in cand_drops_stage1 if d > mu_r]
         survivors.sort(key=lambda x: x[1], reverse=True)
-        survivors = survivors[:32]  # cap before stage 2
+        survivors = survivors[:32]
         log(f"  Stage 1 survivors: {len(survivors)} (above mu_rand)")
 
-        # Stage 2: re-evaluate survivors on validation pairs
         survivor_cols = [c for c, _ in survivors]
         val_drops = []
         for c in survivor_cols:
@@ -220,7 +229,6 @@ def discover_anchors(
                 "p_value": float(1.0 - norm.cdf(z)),
             })
 
-        # Anchors: pass z threshold on VALIDATION drop
         layer_anchors = [r for r in stage2_results if r["z_score"] > CFG.z_threshold]
         layer_anchors.sort(key=lambda r: r["drop_val"], reverse=True)
         all_candidates.extend(layer_anchors)
@@ -263,7 +271,6 @@ def sample_random_neurons(
     intermediate_size: int,
     rng: random.Random,
 ) -> List[Tuple[int, int]]:
-    """Match per-layer count of anchors_subset, exclude collisions."""
     from collections import defaultdict
     layer_counts: Dict[int, int] = defaultdict(int)
     for l, _ in anchors_subset:
@@ -297,7 +304,6 @@ def run_ablation(
     log("=== Ablation sweep ===")
     anchor_tuples = [(a["layer"], a["column"]) for a in anchors]
 
-    # Baseline
     eval_pairs = calib_pairs[:CFG.ablation_eval_pairs]
     base_margins = probe.compute_per_sample_margins(eval_pairs, batch_size=32, pad_id=pad_id)
     base_margin = float(base_margins.mean().item())
@@ -315,7 +321,6 @@ def run_ablation(
         log(f"--- K={K} ---")
         subset = anchor_tuples[:K]
 
-        # Anchor run
         saved = crush_many(probe, subset)
         try:
             anchor_margins = probe.compute_per_sample_margins(eval_pairs, batch_size=32, pad_id=pad_id)
@@ -328,7 +333,6 @@ def run_ablation(
         anchor_margin_drop = base_margin - anchor_margin
         anchor_acc_drop = base_acc - anchor_acc
 
-        # Random trials
         rand_margin_drops: List[float] = []
         rand_acc_drops: List[float] = []
         for trial in range(CFG.n_random_trials):
@@ -337,7 +341,6 @@ def run_ablation(
             try:
                 rm = probe.compute_per_sample_margins(eval_pairs, batch_size=32, pad_id=pad_id)
                 rand_margin = float(rm.mean().item())
-                # Test accuracy is expensive — only run for a sub-sample of trials to save time
                 if trial < min(10, CFG.n_random_trials):
                     rt = evaluate_model(model, tokenizer, test_samples)
                     rand_acc = rt["accuracy"]
@@ -349,7 +352,6 @@ def run_ablation(
         rmd = np.array(rand_margin_drops)
         rad = np.array(rand_acc_drops) if rand_acc_drops else np.array([0.0])
         z = (anchor_margin_drop - rmd.mean()) / (rmd.std() + 1e-8)
-
         translation = (anchor_acc_drop / anchor_margin_drop) if abs(anchor_margin_drop) > 1e-6 else 0.0
 
         log(f"  Anchor margin drop: {anchor_margin_drop:+.4f}")
@@ -386,8 +388,8 @@ def main():
     setup_seeds(CFG.seed)
     log(f"Config: {asdict(CFG)}")
 
-    log("Loading tokenizer + model (bf16, device_map=auto)...")
-    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, trust_remote_code=True, use_fast=False)
+    log("Loading tokenizer + model (bf16, device_map=auto, trust_remote_code=True)...")
+    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, trust_remote_code=True, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     pad_id = tokenizer.pad_token_id
@@ -401,10 +403,15 @@ def main():
     model.eval()
     probe = MedNSQProbe(model)
 
-    # Sanity assert: anchors will fit
-    log(f"Model intermediate_size = {probe.intermediate_size}, layers = {len(probe.layers)}")
+    # Print full architecture so user can verify before discovery starts
+    report_architecture(model, probe)
 
-    # Load data
+    # Validate middle_layers against actual layer count
+    if max(CFG.middle_layers) >= len(probe.layers):
+        log(f"FATAL: middle_layers max={max(CFG.middle_layers)} but model has {len(probe.layers)} layers")
+        log("Edit CFG.middle_layers in this script and rerun. Aborting.")
+        return
+
     log("Loading MedQA train + test splits...")
     train_pool = load_mcq_dataset(n_total=CFG.calib_size + CFG.val_size + 100, split="train")
     random.Random(CFG.seed).shuffle(train_pool)
@@ -413,7 +420,6 @@ def main():
     test_samples = load_mcq_dataset(n_total=CFG.test_size, split="test")
     log(f"Calib={len(calib_samples)} Val={len(val_samples)} Test={len(test_samples)}")
 
-    # Build adversarial pairs
     log("Building adversarial pairs (calib)...")
     calib_pairs = build_adversarial_pairs(model, tokenizer, calib_samples, n_calib=len(calib_samples))
     assert all(p["pos_id"] != p["neg_id"] for p in calib_pairs), "Bad adversarial pair (pos==neg)"
@@ -423,7 +429,6 @@ def main():
     val_pairs = build_adversarial_pairs(model, tokenizer, val_samples, n_calib=len(val_samples))
     log(f"Built {len(val_pairs)} val pairs")
 
-    # Discovery
     anchors, layer_stats = discover_anchors(model, tokenizer, probe, calib_pairs, val_pairs, pad_id)
 
     if len(anchors) == 0:
@@ -449,8 +454,8 @@ def main():
         json.dump(discovery_output, f, indent=2)
     log(f"Saved discovery to {CFG.discovery_file} ({len(anchors)} anchors)")
 
-    # Ablation
-    ablation = run_ablation(model, tokenizer, probe, anchors, calib_pairs, test_samples[:CFG.ablation_test_size], pad_id)
+    ablation = run_ablation(model, tokenizer, probe, anchors, calib_pairs,
+                            test_samples[:CFG.ablation_test_size], pad_id)
 
     ablation_output = {
         "metadata": {
@@ -467,7 +472,6 @@ def main():
         json.dump(ablation_output, f, indent=2)
     log(f"Saved ablation to {CFG.ablation_file}")
 
-    # Summary
     log("\n=== FINAL SUMMARY ===")
     log(f"Baseline: margin={ablation['baseline_margin']:.4f}, accuracy={ablation['baseline_accuracy']:.4f}")
     log(f"{'K':>4}  {'AnchMarΔ':>10}  {'RandMarΔ':>10}  {'zMar':>6}  {'AnchAccΔ':>10}  {'TransRate':>10}")
