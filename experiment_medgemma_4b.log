@@ -1,0 +1,103 @@
+[11:58:28] Config: {'model_name': 'google/medgemma-4b-it', 'seed': 42, 'calib_size': 400, 'val_size': 200, 'test_size': 300, 'k_values': (1, 2, 4, 8, 16, 32, 64), 'n_random_trials': 30, 'ablation_eval_pairs': 200, 'ablation_test_size': 300, 'ablation_file': 'ablation_medgemma_4b.json', 'log_file': 'experiment_medgemma_4b.log', 'intervention_type': 'column_crush_1bit'}
+[11:58:28] Loading tokenizer + model (bf16, device_map=auto)...
+[12:00:53] Config: {'model_name': 'google/medgemma-4b-it', 'seed': 42, 'calib_size': 400, 'val_size': 200, 'test_size': 300, 'k_values': (1, 2, 4, 8, 16, 32, 64), 'n_random_trials': 30, 'ablation_eval_pairs': 200, 'ablation_test_size': 300, 'ablation_file': 'ablation_medgemma_4b.json', 'log_file': 'experiment_medgemma_4b.log', 'intervention_type': 'column_crush_1bit'}
+[12:00:53] Loading tokenizer + model (bf16, device_map=auto)...
+[12:02:25] Config: {'model_name': 'google/medgemma-4b-it', 'seed': 42, 'calib_size': 400, 'val_size': 200, 'test_size': 300, 'k_values': (1, 2, 4, 8, 16, 32, 64), 'n_random_trials': 30, 'ablation_eval_pairs': 200, 'ablation_test_size': 300, 'ablation_file': 'ablation_medgemma_4b.json', 'log_file': 'experiment_medgemma_4b.log', 'intervention_type': 'column_crush_1bit'}
+[12:02:25] Loading tokenizer + model (bf16, device_map=auto)...
+[12:03:39] Detected nested multimodal Gemma3 — using model.model.language_model
+[12:03:39] ============================================================
+[12:03:39] ARCHITECTURE REPORT
+[12:03:39] ============================================================
+[12:03:39] Model class: Gemma3TextModel
+[12:03:39] Config model_type: gemma3_text
+[12:03:39] Hidden size: 2560
+[12:03:39] Intermediate size: 10240
+[12:03:39] Num layers: 34
+[12:03:39] Layer 0 MLP submodules: ['gate_proj', 'up_proj', 'down_proj', 'act_fn']
+[12:03:39] ============================================================
+[12:03:39] Anchor validity: 66 valid, 0 out-of-range
+[12:03:39] Loading MedQA train + test splits...
+[12:03:43] Calib=400 Test=300
+[12:03:43] Building adversarial pairs (calib)...
+[12:03:57] Built 234 calib pairs
+[12:03:57] === Ablation sweep ===
+[12:07:39] Config: {'model_name': 'google/medgemma-4b-it', 'seed': 42, 'calib_size': 400, 'val_size': 200, 'test_size': 300, 'k_values': (1, 2, 4, 8, 16, 32, 64), 'n_random_trials': 30, 'ablation_eval_pairs': 200, 'ablation_test_size': 300, 'ablation_file': 'ablation_medgemma_4b.json', 'log_file': 'experiment_medgemma_4b.log', 'intervention_type': 'column_crush_1bit'}
+[12:07:39] Loading tokenizer + model (bf16, device_map=auto)...
+[12:07:48] Detected nested multimodal Gemma3 — layers at model.model.language_model.layers
+[12:09:09] Config: {'model_name': 'google/medgemma-4b-it', 'seed': 42, 'calib_size': 400, 'val_size': 200, 'test_size': 300, 'k_values': (1, 2, 4, 8, 16, 32, 64), 'n_random_trials': 30, 'ablation_eval_pairs': 200, 'ablation_test_size': 300, 'ablation_file': 'ablation_medgemma_4b.json', 'log_file': 'experiment_medgemma_4b.log', 'intervention_type': 'column_crush_1bit'}
+[12:09:09] Loading tokenizer + model (bf16, device_map=auto)...
+[12:09:17] Manually wiring probe for multimodal Gemma3...
+[12:09:17]   Layers at: model.model.language_model.layers
+[12:09:17] Probe wired: hidden=2560 intermediate=10240 layers=34 heads=8
+[12:09:17]   Layer 0 MLP: ['gate_proj', 'up_proj', 'down_proj', 'act_fn']
+[12:09:17] ============================================================
+[12:09:17] ARCHITECTURE REPORT
+[12:09:17] ============================================================
+[12:09:17] Model class: Gemma3ForConditionalGeneration
+[12:09:17] Config model_type: gemma3
+[12:09:17] Hidden size: 2560
+[12:09:17] Intermediate size: 10240
+[12:09:17] Num layers: 34
+[12:09:17] Layer 0 MLP submodules: ['gate_proj', 'up_proj', 'down_proj', 'act_fn']
+[12:09:17] ============================================================
+[12:09:17] Anchor validity: 66 valid, 0 out-of-range
+[12:09:17] Loading MedQA train + test splits...
+[12:09:21] Calib=400 Test=300
+[12:09:21] Building adversarial pairs (calib)...
+[12:09:35] Built 234 calib pairs
+[12:09:35] === Ablation sweep ===
+[12:09:53] Baseline margin=4.2453 accuracy=0.5267
+[12:09:53] --- K=1 ---
+[12:16:16]   Anchor margin drop: +0.0356
+[12:16:16]   Random margin drop: -0.0059 ± 0.0054  (z = +7.76)
+[12:16:16]   Anchor accuracy drop: +0.0167
+[12:16:16]   Random accuracy drop: +0.0033 ± 0.0026  (n=10)
+[12:16:16]   Translation rate (acc_drop / margin_drop): +0.468
+[12:16:16] --- K=2 ---
+[12:22:44]   Anchor margin drop: +0.1741
+[12:22:44]   Random margin drop: -0.0055 ± 0.0049  (z = +36.52)
+[12:22:44]   Anchor accuracy drop: +0.0100
+[12:22:44]   Random accuracy drop: +0.0037 ± 0.0035  (n=10)
+[12:22:44]   Translation rate (acc_drop / margin_drop): +0.057
+[12:22:44] --- K=4 ---
+[12:29:10]   Anchor margin drop: +0.2953
+[12:29:10]   Random margin drop: -0.0069 ± 0.0069  (z = +43.84)
+[12:29:10]   Anchor accuracy drop: +0.0067
+[12:29:10]   Random accuracy drop: +0.0040 ± 0.0036  (n=10)
+[12:29:10]   Translation rate (acc_drop / margin_drop): +0.023
+[12:29:10] --- K=8 ---
+[12:35:37]   Anchor margin drop: +0.4319
+[12:35:37]   Random margin drop: -0.0063 ± 0.0101  (z = +43.48)
+[12:35:37]   Anchor accuracy drop: +0.0200
+[12:35:37]   Random accuracy drop: -0.0003 ± 0.0031  (n=10)
+[12:35:37]   Translation rate (acc_drop / margin_drop): +0.046
+[12:35:37] --- K=16 ---
+[12:42:03]   Anchor margin drop: +0.7953
+[12:42:03]   Random margin drop: -0.0049 ± 0.0158  (z = +50.61)
+[12:42:03]   Anchor accuracy drop: +0.0100
+[12:42:03]   Random accuracy drop: +0.0020 ± 0.0037  (n=10)
+[12:42:03]   Translation rate (acc_drop / margin_drop): +0.013
+[12:42:03] --- K=32 ---
+[12:48:31]   Anchor margin drop: +1.6897
+[12:48:31]   Random margin drop: -0.0027 ± 0.0205  (z = +82.54)
+[12:48:31]   Anchor accuracy drop: +0.0567
+[12:48:31]   Random accuracy drop: +0.0050 ± 0.0050  (n=10)
+[12:48:31]   Translation rate (acc_drop / margin_drop): +0.034
+[12:48:31] --- K=64 ---
+[12:54:57]   Anchor margin drop: +2.2516
+[12:54:57]   Random margin drop: -0.0074 ± 0.0251  (z = +89.88)
+[12:54:57]   Anchor accuracy drop: +0.0567
+[12:54:57]   Random accuracy drop: -0.0000 ± 0.0045  (n=10)
+[12:54:57]   Translation rate (acc_drop / margin_drop): +0.025
+[12:54:57] Saved ablation to ablation_medgemma_4b.json
+[12:54:57] 
+=== FINAL SUMMARY ===
+[12:54:57] Baseline: margin=4.2453, accuracy=0.5267
+[12:54:57]    K    AnchMarΔ    RandMarΔ    zMar    AnchAccΔ   TransRate
+[12:54:57]    1     +0.0356     -0.0059   +7.76     +0.0167      +0.468
+[12:54:57]    2     +0.1741     -0.0055  +36.52     +0.0100      +0.057
+[12:54:57]    4     +0.2953     -0.0069  +43.84     +0.0067      +0.023
+[12:54:57]    8     +0.4319     -0.0063  +43.48     +0.0200      +0.046
+[12:54:57]   16     +0.7953     -0.0049  +50.61     +0.0100      +0.013
+[12:54:57]   32     +1.6897     -0.0027  +82.54     +0.0567      +0.034
+[12:54:57]   64     +2.2516     -0.0074  +89.88     +0.0567      +0.025

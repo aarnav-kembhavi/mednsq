@@ -38,21 +38,25 @@ torch._dynamo.config.suppress_errors = True
 # =====================================================================
 # Med42 anchors from validated discovery pipeline (ablation_med42_8b.json,
 # z=259 at K=32 on MedQA). Top 64, sorted by drop_val descending.
-MEDITRON_ANCHORS: List[Tuple[int, int]] = [
-    (17,3451), (14,18336), (12,8109), (20,13290), (18,11555), (19,18147),
-    (17,16475), (14,9924), (13,14316), (19,8750), (24,12896), (17,7652),
-    (15,485), (19,9166), (23,5298), (22,9786), (24,10538), (17,4105),
-    (11,3558), (19,8257), (20,9629), (21,2951), (15,10749), (17,1105),
-    (11,10155), (22,1969), (20,18853), (24,16669), (19,10109), (12,11452),
-    (15,3642), (15,9396), (14,8180), (23,12030), (12,6127), (15,10782),
-    (15,16588), (16,4570), (24,13642), (15,10943), (15,3905), (13,14562),
-    (13,1151), (15,1639)
+MED42_ANCHORS = [
+    (19, 7232), (20, 4299), (14, 8), (24, 5326), (18, 7417),
+    (23, 306), (20, 3476), (14, 318), (21, 12445), (18, 10857),
+    (18, 2694), (15, 1706), (15, 11853), (17, 10284), (14, 12639),
+    (17, 300), (20, 4891), (26, 10664), (15, 10813), (19, 1498),
+    (24, 12457), (21, 3481), (20, 10638), (25, 2989), (17, 8887),
+    (25, 9150), (16, 8902), (21, 8329), (19, 9770), (15, 6589),
+    (15, 9394), (20, 2786), (14, 10529), (20, 1104), (15, 1933),
+    (16, 5431), (19, 4882), (19, 8771), (23, 13141), (16, 11807),
+    (20, 4965), (23, 13240), (15, 9483), (18, 13221), (17, 13564),
+    (25, 560), (17, 529), (20, 5410), (18, 8527), (19, 12134),
+    (21, 713), (16, 10142), (23, 13799), (24, 14298), (20, 13028),
+    (17, 1829), (18, 11143), (23, 2565), (26, 2589), (16, 2024),
+    (22, 5944), (17, 7471), (15, 2298), (16, 7809),
 ]
+ # Keep variable name for compatibility
 
-MED42_ANCHORS = MEDITRON_ANCHORS  # Keep variable name for compatibility
-
-MODEL_ID = "Qwen/Qwen2.5-7B"
-MODEL_KEY: str = "qwen25_8b"
+MODEL_ID = "meta-llama/Meta-Llama-3-8B"
+MODEL_KEY: str = "llama3_8b"
 
 
 @dataclass
@@ -448,14 +452,14 @@ def evaluate(cfg: EvalConfig) -> Dict[str, Any]:
         torch.cuda.manual_seed_all(cfg.random_seed)
 
     print("\n[1/4] Loading model...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     # Qwen2.5 specific: ensure chat template doesn't interfere
-    tokenizer.chat_template = None  # Use base template for our prompts
+      # Use base template for our prompts
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
-        torch_dtype=torch.bfloat16,  # Changed from float16 to bfloat16 for better 8B support
+        torch_dtype=torch.float16,  # Changed from float16 to bfloat16 for better 8B support
         device_map="auto",
         trust_remote_code=True,
         low_cpu_mem_usage=True,  # Added
