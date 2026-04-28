@@ -296,19 +296,31 @@ def main():
 
     model.eval()
 
-    # For multimodal Gemma3, the text decoder is at model.language_model or
-    # model.model.language_model. Try to expose it cleanly for the probe.
-    if hasattr(model, "language_model"):
-        log("Detected multimodal Gemma3 — using model.language_model as text backbone")
-        text_model = model.language_model
+    # Locate the text decoder layers manually for multimodal Gemma3.
+    # IMPORTANT: probe needs the full model for forward passes (lm_head lives there)
+    # but layer access goes through the language_model submodule.
+    if hasattr(model, "language_model") and hasattr(model.language_model, "layers"):
+        log("Detected multimodal Gemma3 — layers at model.language_model.layers")
+        layers_module = model.language_model
     elif hasattr(model, "model") and hasattr(model.model, "language_model"):
-        log("Detected nested multimodal Gemma3 — using model.model.language_model")
-        text_model = model.model.language_model
+        log("Detected nested multimodal Gemma3 — layers at model.model.language_model.layers")
+        layers_module = model.model.language_model
     else:
-        text_model = model
+        layers_module = model
 
-    probe = MedNSQProbe(text_model)
-    valid_anchors = report_architecture(text_model, probe)
+    # Build probe against the full model (for forwards) but patch its layer access
+    probe = MedNSQProbe(model)
+    # Override the layers reference to point at the text decoder
+    probe.layers = layers_module.layers
+    # Re-probe dimensions from the actual decoder layer
+    from mednsq_probe import _get_mlp_down_proj
+    sample = probe.layers[0]
+    down = _get_mlp_down_proj(sample)
+    probe.hidden_size = down.weight.shape[0]
+    probe.intermediate_size = down.weight.shape[1]
+    log(f"Probe rebound: hidden={probe.hidden_size} intermediate={probe.intermediate_size} layers={len(probe.layers)}")
+
+    valid_anchors = report_architecture(model, probe)
 
     if len(valid_anchors) == 0:
         log("FATAL: No valid anchors after bounds check. Aborting.")
