@@ -44,7 +44,7 @@ class Config:
     # PLACEHOLDER: AFM-4.5B layer count is not pre-confirmed.
     # The probe prints `layers=N` at load. Adjust this range to cover ~middle 60%.
     # Sensible default for a 4.5B model assuming 28-36 layers: middle ~range(10, 24).
-    middle_layers: Tuple[int, ...] = tuple(range(8, 24))
+    middle_layers: Tuple[int, ...] = tuple(range(12, 24))
     seed: int = 42
 
     # Calibration / validation / test sizes
