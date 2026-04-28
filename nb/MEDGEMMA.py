@@ -296,29 +296,48 @@ def main():
 
     model.eval()
 
-    # Locate the text decoder layers manually for multimodal Gemma3.
-    # IMPORTANT: probe needs the full model for forward passes (lm_head lives there)
-    # but layer access goes through the language_model submodule.
-    if hasattr(model, "language_model") and hasattr(model.language_model, "layers"):
-        log("Detected multimodal Gemma3 — layers at model.language_model.layers")
-        layers_module = model.language_model
-    elif hasattr(model, "model") and hasattr(model.model, "language_model"):
-        log("Detected nested multimodal Gemma3 — layers at model.model.language_model.layers")
-        layers_module = model.model.language_model
-    else:
-        layers_module = model
+    # Manually wire probe to multimodal Gemma3.
+    # Architecture (from prior architecture report):
+    #   - 34 text decoder layers
+    #   - intermediate_size = 10240
+    #   - hidden_size = 2560
+    #   - layers at model.model.language_model.layers
+    #   - lm_head on the full model (call model(...) for logits)
 
-    # Build probe against the full model (for forwards) but patch its layer access
-    probe = MedNSQProbe(model)
-    # Override the layers reference to point at the text decoder
-    probe.layers = layers_module.layers
-    # Re-probe dimensions from the actual decoder layer
-    from mednsq_probe import _get_mlp_down_proj
+    log("Manually wiring probe for multimodal Gemma3...")
+
+    # Locate layers
+    if hasattr(model, "language_model") and hasattr(model.language_model, "layers"):
+        layer_stack = model.language_model.layers
+        log("  Layers at: model.language_model.layers")
+    elif hasattr(model, "model") and hasattr(model.model, "language_model") and hasattr(model.model.language_model, "layers"):
+        layer_stack = model.model.language_model.layers
+        log("  Layers at: model.model.language_model.layers")
+    elif hasattr(model, "model") and hasattr(model.model, "layers"):
+        layer_stack = model.model.layers
+        log("  Layers at: model.model.layers")
+    else:
+        raise RuntimeError("Cannot locate text decoder layers in MedGemma model.")
+
+    # Bypass MedNSQProbe.__init__ — build it manually
+    probe = MedNSQProbe.__new__(MedNSQProbe)
+    probe.model = model
+    probe.layers = layer_stack
+
+    # Hardcoded dimensions for MedGemma-4B (verified from architecture report)
+    probe.hidden_size = 2560
+    probe.intermediate_size = 10240
+    probe.num_heads = 8
+    probe.head_dim = 2560 // 8
+
+    log(f"Probe wired: hidden={probe.hidden_size} intermediate={probe.intermediate_size} "
+        f"layers={len(probe.layers)} heads={probe.num_heads}")
+
+    # Verify layer 0 has the expected MLP structure
     sample = probe.layers[0]
-    down = _get_mlp_down_proj(sample)
-    probe.hidden_size = down.weight.shape[0]
-    probe.intermediate_size = down.weight.shape[1]
-    log(f"Probe rebound: hidden={probe.hidden_size} intermediate={probe.intermediate_size} layers={len(probe.layers)}")
+    if not (hasattr(sample, "mlp") and hasattr(sample.mlp, "down_proj")):
+        raise RuntimeError("Layer 0 does not have mlp.down_proj — probe will fail")
+    log(f"  Layer 0 MLP: {[name for name, _ in sample.mlp.named_children()]}")
 
     valid_anchors = report_architecture(model, probe)
 
