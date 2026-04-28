@@ -51,7 +51,7 @@ MEDITRON_ANCHORS: List[Tuple[int, int]] = [
 
 MED42_ANCHORS = MEDITRON_ANCHORS  # Keep variable name for compatibility
 
-MODEL_ID = "Qwen/Qwen2.5-8B"
+MODEL_ID = "Qwen/Qwen2.5-7B"
 MODEL_KEY: str = "qwen25_8b"
 
 
