@@ -50,7 +50,7 @@ MED42_ANCHORS: List[Tuple[int, int]] = [
     (16,6845),(15,1780),(10,8392)
 ]
 
-MODEL_ID: str = "google/gemma-2-4b"
+MODEL_ID = "google/gemma-2b"
 MODEL_KEY: str = "gemma4b"
 
 
