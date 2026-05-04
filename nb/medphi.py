@@ -40,7 +40,7 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "microsoft/MediPhi-Instruct"
+    model_name: str = "/workspace/medphi"
     # Phi-3.5-mini has 32 layers (0-31). Middle 60% = layers 6-25.
     middle_layers: Tuple[int, ...] = tuple(range(12, 24))
     seed: int = 42
@@ -390,16 +390,12 @@ def main():
 
     log("Loading tokenizer + model (bf16, device_map=auto)...")
     # MediPhi-Instruct is standard transformers, no trust_remote_code needed
-    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, use_fast=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    pad_id = tokenizer.pad_token_id
-
+    tokenizer = AutoTokenizer.from_pretrained("/workspace/medphi", use_fast=True, local_files_only=True)
     model = AutoModelForCausalLM.from_pretrained(
-        CFG.model_name,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+        "/workspace/medphi",
+        torch_dtype=torch.bfloat16,
         device_map="auto",
-        low_cpu_mem_usage=True,
+        local_files_only=True,
     )
 
     # ---- Manual architecture inspection for MediPhi (Phi-3.5-mini) ----
