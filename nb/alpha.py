@@ -47,7 +47,7 @@ class Config:
     seed: int = 42
 
     # Calibration / validation / test sizes
-    calib_size: int = 400
+    calib_size: int = 300
     val_size: int = 200
     test_size: int = 300
 
@@ -62,8 +62,8 @@ class Config:
     # Ablation
     k_values: Tuple[int, ...] = (1, 2, 4, 8, 16, 32, 64)
     n_random_trials: int = 5
-    ablation_eval_pairs: int = 200
-    ablation_test_size: int = 300
+    ablation_eval_pairs: int = 100
+    ablation_test_size: int = 200
 
     # Output
     discovery_file: str = "anchors_alphamed_instruct.json"
