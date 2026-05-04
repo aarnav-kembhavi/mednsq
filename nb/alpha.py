@@ -40,7 +40,7 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "che111/AlphaMed-7B-instruct-rl"   # <-- model changed
+    model_name: str = "/workspace/AlphaMed-7B-instruct-rl"   # <-- LOCAL PATH
     # Llama 3.1 8B has 32 layers (0-31). Middle 60% = layers 6-25.
     # Original range (12-24) is kept; it still falls inside the middle.
     middle_layers: Tuple[int, ...] = tuple(range(12, 24))
@@ -387,8 +387,15 @@ def main():
     setup_seeds(CFG.seed)
     log(f"Config: {asdict(CFG)}")
 
+    # First, check if model exists locally
+    if not os.path.exists(CFG.model_name):
+        log(f"ERROR: Model path {CFG.model_name} does not exist!")
+        log("Please download the model first using:")
+        log("  python -c \"from huggingface_hub import snapshot_download; snapshot_download('che111/AlphaMed-7B-instruct-rl', local_dir='/workspace/AlphaMed-7B-instruct-rl', local_dir_use_symlinks=False)\"")
+        return
+
     log("Loading tokenizer + model (bf16, device_map=auto)...")
-    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, use_fast=True, local_files_only=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     pad_id = tokenizer.pad_token_id
@@ -396,6 +403,7 @@ def main():
         CFG.model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
+        local_files_only=True,
     )
 
     # ---- Automatic architecture detection (no hardcoded shapes) ----
