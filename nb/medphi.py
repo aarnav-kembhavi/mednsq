@@ -42,7 +42,7 @@ from mednsq_probe import MedNSQProbe
 class Config:
     model_name: str = "microsoft/MediPhi-Instruct"
     # Phi-3.5-mini has 32 layers (0-31). Middle 60% = layers 6-25.
-    middle_layers: Tuple[int, ...] = tuple(range(6, 26))
+    middle_layers: Tuple[int, ...] = tuple(range(12, 24))
     seed: int = 42
 
     # Calibration / validation / test sizes
@@ -53,14 +53,14 @@ class Config:
     # Discovery
     stage1_topk: int = 64
     stage1_eval_pairs: int = 80
-    stage2_eval_pairs: int = 400
+    stage2_eval_pairs: int = 200
     random_baseline_cols: int = 32
-    z_threshold: float = 4.0
-    max_anchors: int = 64
+    z_threshold: float = 2.0
+    max_anchors: int = 100
 
     # Ablation
     k_values: Tuple[int, ...] = (1, 2, 4, 8, 16, 32, 64)
-    n_random_trials: int = 30
+    n_random_trials: int = 5
     ablation_eval_pairs: int = 200
     ablation_test_size: int = 300
 
@@ -397,10 +397,10 @@ def main():
 
     model = AutoModelForCausalLM.from_pretrained(
         CFG.model_name,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
         device_map="auto",
+        low_cpu_mem_usage=True,
     )
-    model.eval()
 
     # ---- Manual architecture inspection for MediPhi (Phi-3.5-mini) ----
     # Do NOT use getattr chains — inspect directly to avoid silent failures

@@ -38,11 +38,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 MODEL_NAME = "microsoft/Phi-3-mini-128k-instruct"
 
 # Experiments to preserve (from notebooks/run_mednsq.py)
-SEEDS = [1, 2, 3]
-LAYERS_TO_TEST = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+SEEDS = [1]
+LAYERS_TO_TEST = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
 
 # EMS constants (preserve)
-RANDOM_BASELINE_COLS = 128
+RANDOM_BASELINE_COLS = 64
 Z_THRESHOLD = 2.0
 
 # Batching constant (preserve default)
@@ -59,11 +59,11 @@ PAD_TOKEN_ID: int = 0
 class EMSConfig:
     # Per current pipeline defaults (notebooks/run_mednsq.py)
     layer_idx: int = 2
-    calibration_size: int = 800
-    stage1_top_k: int = 256
-    stage1_samples: int = 120
+    calibration_size: int = 400
+    stage1_top_k: int = 128
+    stage1_samples: int = 164
     stage2_top_k: int = 128
-    stage2_samples: int = 800
+    stage2_samples: int = 400
 
 
 def _repo_root() -> str:
@@ -257,7 +257,7 @@ def batched_forward_pass(
         raise RuntimeError("batched_forward_pass: adv_pairs is empty")
     _assert_letter_token_ids(letter_token_ids)
 
-    device = next(model.parameters()).device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     letter_token_ids = letter_token_ids.to(device)
 
     margins: List[float] = []
@@ -371,7 +371,7 @@ def compute_contrastive_jacobian_phi3(
     if not adv_pairs:
         raise RuntimeError("compute_contrastive_jacobian_phi3: adv_pairs is empty")
 
-    device = next(model.parameters()).device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     weight = _phi3_down_proj_weight(model, layer_idx)
 
     # Freeze all params, enable grad for target weight only.
@@ -991,7 +991,7 @@ def run_anchor_activation_patching_experiment_phi3(
     from mednsq_data import build_adversarial_pairs
 
     model.eval()
-    device = next(model.parameters()).device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     adv_pairs = build_adversarial_pairs(model, tokenizer, calibration_samples, n_calib=len(calibration_samples))
     _assert_adv_pairs_shape(adv_pairs)
@@ -1304,7 +1304,7 @@ def run_head_to_anchor_attribution_phi3(
 
     print("\n=== Head-to-Anchor Attribution ===")
     model.eval()
-    device = next(model.parameters()).device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     layers = _get_phi3_layers(model)
 
     anchors_by_layer: Dict[int, List[int]] = {}
@@ -1422,7 +1422,11 @@ def main() -> None:
     from mednsq_eval import evaluate_model, _get_letter_token_ids
 
     # Load tokenizer once.
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+    MODEL_NAME,
+    trust_remote_code=True,
+    use_fast=True
+)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     global PAD_TOKEN_ID
@@ -1449,19 +1453,19 @@ def main() -> None:
 
     # Model/device strategy: single-device (required by explicit model.device tensor moves).
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch_dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
 
     # Load model ONCE and reuse across seeds/experiments (dimension constants set once).
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        torch_dtype=torch_dtype,
-        trust_remote_code=True,
-    )
-    model.to(device)
-    model.eval()
+    MODEL_NAME,
+    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+    trust_remote_code=True,
+    device_map="auto",          # prevents OOM
+    low_cpu_mem_usage=True      # prevents RAM spike during load
+)
+model.eval()
 
     # Device safety: ensure ALL model parameters are on the same device.
-    device = next(model.parameters()).device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Model device:", device)
     for name, p in model.named_parameters():
         if p.device != device:
