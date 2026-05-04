@@ -391,6 +391,9 @@ def main():
     log("Loading tokenizer + model (bf16, device_map=auto)...")
     # MediPhi-Instruct is standard transformers, no trust_remote_code needed
     tokenizer = AutoTokenizer.from_pretrained("/workspace/medphi", use_fast=True, local_files_only=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    pad_id = tokenizer.pad_token_id
     model = AutoModelForCausalLM.from_pretrained(
         "/workspace/medphi",
         torch_dtype=torch.bfloat16,
