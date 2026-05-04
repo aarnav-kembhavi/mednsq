@@ -40,11 +40,9 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "openmed-community/AFM-4.5B-OpenMed-RL-CoT"
-    # PLACEHOLDER: AFM-4.5B layer count is not pre-confirmed.
-    # The probe prints `layers=N` at load. Adjust this range to cover ~middle 60%.
-    # Sensible default for a 4.5B model assuming 28-36 layers: middle ~range(10, 24).
-    middle_layers: Tuple[int, ...] = tuple(range(12, 24))
+    model_name: str = "microsoft/MediPhi-Instruct"
+    # Phi-3.5-mini has 32 layers (0-31). Middle 60% = layers 6-25.
+    middle_layers: Tuple[int, ...] = tuple(range(6, 26))
     seed: int = 42
 
     # Calibration / validation / test sizes
@@ -67,9 +65,9 @@ class Config:
     ablation_test_size: int = 300
 
     # Output
-    discovery_file: str = "anchors_afm_openmed_4_5b.json"
-    ablation_file: str = "ablation_afm_openmed_4_5b.json"
-    log_file: str = "experiment_afm_openmed_4_5b.log"
+    discovery_file: str = "anchors_medphi_instruct.json"
+    ablation_file: str = "ablation_medphi_instruct.json"
+    log_file: str = "experiment_medphi_instruct.log"
 
     intervention_type: str = "column_crush_1bit"
 
@@ -104,26 +102,28 @@ def setup_perf() -> None:
 def report_architecture(model, probe: MedNSQProbe) -> None:
     """Print enough about the model to verify probe will work correctly."""
     log("=" * 60)
-    log("ARCHITECTURE REPORT")
+    log("ARCHITECTURE REPORT — MediPhi-Instruct (Phi-3.5-mini)")
     log("=" * 60)
     log(f"Model class: {type(model).__name__}")
-    log(f"Config model_type: {getattr(model.config, 'model_type', 'unknown')}")
+    log(f"Config model_type: {model.config.model_type}")
     log(f"Hidden size: {probe.hidden_size}")
     log(f"Intermediate size (= MLP neurons per layer): {probe.intermediate_size}")
     log(f"Num layers: {len(probe.layers)}")
     log(f"Num attention heads: {probe.num_heads}")
 
-    # Show structure of layer 0 MLP so we can verify probe attached correctly
+    # Phi-3.5-mini MLP uses gate_up_proj (fused) + down_proj
+    # gate_up_proj.weight shape: [2 * intermediate_size, hidden_size]
+    # down_proj.weight shape:    [hidden_size, intermediate_size]
     layer0 = probe.layers[0]
-    if hasattr(layer0, "mlp"):
-        log(f"Layer 0 MLP submodules: {[name for name, _ in layer0.mlp.named_children()]}")
-    else:
-        log("Layer 0 has no .mlp attribute (probe may need adjustment)")
-
+    mlp0   = layer0.mlp
+    down0  = mlp0.down_proj
+    log(f"Layer 0 MLP submodules: {[name for name, _ in mlp0.named_children()]}")
+    log(f"Layer 0 down_proj weight shape: {list(down0.weight.shape)}")
     log(f"Configured middle_layers: {list(CFG.middle_layers)}")
+
     if max(CFG.middle_layers) >= len(probe.layers):
-        log(f"WARNING: middle_layers includes layer {max(CFG.middle_layers)} but model has only {len(probe.layers)} layers!")
-        log("Edit CFG.middle_layers and rerun.")
+        log(f"FATAL: middle_layers max={max(CFG.middle_layers)} "
+            f"but model has only {len(probe.layers)} layers. Fix CFG.")
     log("=" * 60)
 
 
@@ -388,8 +388,9 @@ def main():
     setup_seeds(CFG.seed)
     log(f"Config: {asdict(CFG)}")
 
-    log("Loading tokenizer + model (bf16, device_map=auto, trust_remote_code=True)...")
-    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, trust_remote_code=True, use_fast=True)
+    log("Loading tokenizer + model (bf16, device_map=auto)...")
+    # MediPhi-Instruct is standard transformers, no trust_remote_code needed
+    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     pad_id = tokenizer.pad_token_id
@@ -398,10 +399,40 @@ def main():
         CFG.model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
-        trust_remote_code=True,
     )
     model.eval()
+
+    # ---- Manual architecture inspection for MediPhi (Phi-3.5-mini) ----
+    # Do NOT use getattr chains — inspect directly to avoid silent failures
+    log("Inspecting MediPhi architecture manually...")
+    _layers = model.model.layers          # nn.ModuleList, 32 layers
+    _layer0 = _layers[0]
+    _mlp0   = _layer0.mlp
+    # Phi-3.5-mini MLP: gate_up_proj (fused, dim = 2 * intermediate_size) + down_proj
+    # down_proj.weight shape: [hidden_size, intermediate_size]
+    _down0  = _mlp0.down_proj
+    _hidden_size       = _down0.weight.shape[0]   # 3072
+    _intermediate_size = _down0.weight.shape[1]   # 8192
+    _num_layers        = len(_layers)              # 32
+    _num_heads         = model.config.num_attention_heads  # 32
+
+    log(f"  num_layers        = {_num_layers}")
+    log(f"  hidden_size       = {_hidden_size}")
+    log(f"  intermediate_size = {_intermediate_size}")
+    log(f"  num_heads         = {_num_heads}")
+    log(f"  down_proj shape   = {list(_down0.weight.shape)}")
+    # Verify expected values; abort if wrong to avoid silent bugs
+    assert _num_layers == 32,        f"Expected 32 layers, got {_num_layers}"
+    assert _hidden_size == 3072,     f"Expected hidden 3072, got {_hidden_size}"
+    assert _intermediate_size == 8192, f"Expected intermediate 8192, got {_intermediate_size}"
+    log("  Architecture assertions passed.")
+
     probe = MedNSQProbe(model)
+    # Override probe fields with manually verified values
+    probe.layers           = _layers
+    probe.hidden_size      = _hidden_size
+    probe.intermediate_size = _intermediate_size
+    probe.num_heads        = _num_heads
 
     # Print full architecture so user can verify before discovery starts
     report_architecture(model, probe)

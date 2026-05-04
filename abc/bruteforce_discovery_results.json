@@ -1,0 +1,1461 @@
+[
+  {
+    "n": 1,
+    "title": "[gemma4b] Sabotage neurons in deeper layers?",
+    "finding": "sab_mean=12.81  norm_mean=13.56  shift=-0.75",
+    "p": 0.8108498446029766,
+    "effect": -0.75,
+    "significant": "False"
+  },
+  {
+    "n": 2,
+    "title": "[llama3_8b] Sabotage neurons in deeper layers?",
+    "finding": "sab_mean=18.97  norm_mean=18.94  shift=+0.03",
+    "p": 0.5026924078184193,
+    "effect": 0.03421309872922862,
+    "significant": "False"
+  },
+  {
+    "n": 3,
+    "title": "[med42] Sabotage neurons in deeper layers?",
+    "finding": "sab_mean=19.97  norm_mean=18.00  shift=+1.97",
+    "p": 0.010685062964952637,
+    "effect": 1.9677419354838719,
+    "significant": "True"
+  },
+  {
+    "n": 4,
+    "title": "[medgemma4b] Sabotage neurons in deeper layers?",
+    "finding": "sab_mean=16.83  norm_mean=13.86  shift=+2.97",
+    "p": 0.001851020174831421,
+    "effect": 2.965621840242669,
+    "significant": "True"
+  },
+  {
+    "n": 5,
+    "title": "[meditron] Sabotage neurons in deeper layers?",
+    "finding": "sab_mean=17.00  norm_mean=17.18  shift=-0.18",
+    "p": 0.5222666242588021,
+    "effect": -0.17948717948717885,
+    "significant": "False"
+  },
+  {
+    "n": 6,
+    "title": "[afm_openmed45] Sabotage neurons in deeper layers?",
+    "finding": "sab_mean=17.25  norm_mean=17.23  shift=+0.02",
+    "p": 0.6169391727273851,
+    "effect": 0.022727272727273373,
+    "significant": "False"
+  },
+  {
+    "n": 7,
+    "title": "[qwen25_8b] Sabotage neurons in deeper layers?",
+    "finding": "sab_mean=15.41  norm_mean=18.26  shift=-2.85",
+    "p": 0.9900834496913035,
+    "effect": -2.8474945533769063,
+    "significant": "False"
+  },
+  {
+    "n": 8,
+    "title": "[gemma4b] Sabotage neurons have higher MedQA EMS?",
+    "finding": "sab_abs_ems=0.00031  norm_abs_ems=0.00024",
+    "p": 0.14836481749798247,
+    "effect": 6.42475367840234e-05,
+    "significant": "False"
+  },
+  {
+    "n": 9,
+    "title": "[llama3_8b] Sabotage neurons have higher MedQA EMS?",
+    "finding": "sab_abs_ems=0.00969  norm_abs_ems=0.01787",
+    "p": 0.7091128671103446,
+    "effect": -0.008187851407659631,
+    "significant": "False"
+  },
+  {
+    "n": 10,
+    "title": "[med42] Sabotage neurons have higher MedQA EMS?",
+    "finding": "sab_abs_ems=0.01730  norm_abs_ems=0.02369",
+    "p": 0.8646909570811884,
+    "effect": -0.006388647183876044,
+    "significant": "False"
+  },
+  {
+    "n": 11,
+    "title": "[medgemma4b] Sabotage neurons have higher MedQA EMS?",
+    "finding": "sab_abs_ems=0.01993  norm_abs_ems=0.01443",
+    "p": 0.21158613769682838,
+    "effect": 0.005498925829977193,
+    "significant": "False"
+  },
+  {
+    "n": 12,
+    "title": "[meditron] Sabotage neurons have higher MedQA EMS?",
+    "finding": "sab_abs_ems=0.01212  norm_abs_ems=0.00967",
+    "p": 0.32189254319459615,
+    "effect": 0.0024535256446912308,
+    "significant": "False"
+  },
+  {
+    "n": 13,
+    "title": "[afm_openmed45] Sabotage neurons have higher MedQA EMS?",
+    "finding": "sab_abs_ems=0.00871  norm_abs_ems=0.00808",
+    "p": 0.4295881333419892,
+    "effect": 0.0006356533864494522,
+    "significant": "False"
+  },
+  {
+    "n": 14,
+    "title": "[qwen25_8b] Sabotage neurons have higher MedQA EMS?",
+    "finding": "sab_abs_ems=0.00340  norm_abs_ems=0.00422",
+    "p": 0.4663618969515509,
+    "effect": -0.0008180146780555403,
+    "significant": "False"
+  },
+  {
+    "n": 15,
+    "title": "[gemma4b] Sabotage neurons vs normal: total |EMS|?",
+    "finding": "sab=0.00154  norm=0.00115",
+    "p": 0.21657749986903518,
+    "effect": 0.00038895457637977415,
+    "significant": "False"
+  },
+  {
+    "n": 16,
+    "title": "[llama3_8b] Sabotage neurons vs normal: total |EMS|?",
+    "finding": "sab=0.01964  norm=0.03414",
+    "p": 0.47647289376555735,
+    "effect": -0.01450469298071299,
+    "significant": "False"
+  },
+  {
+    "n": 17,
+    "title": "[med42] Sabotage neurons vs normal: total |EMS|?",
+    "finding": "sab=0.04422  norm=0.06243",
+    "p": 0.4681940355762719,
+    "effect": -0.018208814885794802,
+    "significant": "False"
+  },
+  {
+    "n": 18,
+    "title": "[medgemma4b] Sabotage neurons vs normal: total |EMS|?",
+    "finding": "sab=0.07254  norm=0.04753",
+    "p": 0.28166932219999974,
+    "effect": 0.02501169160646184,
+    "significant": "False"
+  },
+  {
+    "n": 19,
+    "title": "[meditron] Sabotage neurons vs normal: total |EMS|?",
+    "finding": "sab=0.02125  norm=0.02747",
+    "p": 0.3860689792340389,
+    "effect": -0.0062179487061280875,
+    "significant": "False"
+  },
+  {
+    "n": 20,
+    "title": "[afm_openmed45] Sabotage neurons vs normal: total |EMS|?",
+    "finding": "sab=0.02902  norm=0.03737",
+    "p": 0.3994409100246501,
+    "effect": -0.008341619133551088,
+    "significant": "False"
+  },
+  {
+    "n": 21,
+    "title": "[qwen25_8b] Sabotage neurons vs normal: total |EMS|?",
+    "finding": "sab=0.01215  norm=0.01264",
+    "p": 0.9231921413909692,
+    "effect": -0.000495642622505935,
+    "significant": "False"
+  },
+  {
+    "n": 22,
+    "title": "CROSS-MODEL: Sabotage% vs depth shift correlation",
+    "finding": "r=-0.071  models=['gemma4b', 'llama3_8b', 'med42', 'medgemma4b', 'meditron', 'afm_openmed45', 'qwen25_8b']",
+    "p": 0.8790481931481541,
+    "effect": -0.07142857142857144,
+    "significant": "False"
+  },
+  {
+    "n": 23,
+    "title": "Layer variance: RL vs SFT",
+    "finding": "RL_std=3.124  SFT_std=4.261",
+    "p": 0.1221846852201894,
+    "effect": -1.1371263329432,
+    "significant": "False"
+  },
+  {
+    "n": 24,
+    "title": "Layer variance: RL vs CPT+SFT",
+    "finding": "RL_std=3.124  CPT+SFT_std=3.814",
+    "p": 0.16944182713086683,
+    "effect": -0.689460651911844,
+    "significant": "False"
+  },
+  {
+    "n": 25,
+    "title": "Layer variance: SFT vs BASE",
+    "finding": "SFT_std=4.261  BASE_std=4.047",
+    "p": 0.6881596819773771,
+    "effect": 0.2136990863332855,
+    "significant": "False"
+  },
+  {
+    "n": 26,
+    "title": "[base_afm45] Anchors non-uniform across depth?",
+    "finding": "early=0 mid=38 late=0 (expected 13 each)",
+    "p": 0.0,
+    "effect": 76.00000000000001,
+    "significant": "True"
+  },
+  {
+    "n": 27,
+    "title": "[gemma4b] Anchors non-uniform across depth?",
+    "finding": "early=16 mid=32 late=0 (expected 16 each)",
+    "p": 1.1253517473441832e-07,
+    "effect": 32.0,
+    "significant": "True"
+  },
+  {
+    "n": 28,
+    "title": "[llama3_8b] Anchors non-uniform across depth?",
+    "finding": "early=0 mid=56 late=8 (expected 21 each)",
+    "p": 0.0,
+    "effect": 86.00000000000001,
+    "significant": "True"
+  },
+  {
+    "n": 29,
+    "title": "[med42] Anchors non-uniform across depth?",
+    "finding": "early=0 mid=56 late=8 (expected 21 each)",
+    "p": 0.0,
+    "effect": 86.00000000000001,
+    "significant": "True"
+  },
+  {
+    "n": 30,
+    "title": "[medgemma4b] Anchors non-uniform across depth?",
+    "finding": "early=16 mid=49 late=1 (expected 22 each)",
+    "p": 1.2484457911909885e-12,
+    "effect": 54.81818181818182,
+    "significant": "True"
+  },
+  {
+    "n": 31,
+    "title": "[meditron] Anchors non-uniform across depth?",
+    "finding": "early=2 mid=38 late=4 (expected 15 each)",
+    "p": 7.572831250968193e-13,
+    "effect": 55.81818181818183,
+    "significant": "True"
+  },
+  {
+    "n": 32,
+    "title": "[afm_openmed45] Anchors non-uniform across depth?",
+    "finding": "early=0 mid=38 late=0 (expected 13 each)",
+    "p": 0.0,
+    "effect": 76.00000000000001,
+    "significant": "True"
+  },
+  {
+    "n": 33,
+    "title": "[qwen25_8b] Anchors non-uniform across depth?",
+    "finding": "early=2 mid=38 late=4 (expected 15 each)",
+    "p": 7.572831250968193e-13,
+    "effect": 55.81818181818183,
+    "significant": "True"
+  },
+  {
+    "n": 34,
+    "title": "[base_afm45] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.631  uniform_CV=0.577  col_mean=8266  col_std=5216",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 35,
+    "title": "[gemma4b] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.645  uniform_CV=0.577  col_mean=4393  col_std=2834",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 36,
+    "title": "[llama3_8b] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.632  uniform_CV=0.577  col_mean=6989  col_std=4417",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 37,
+    "title": "[med42] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.632  uniform_CV=0.577  col_mean=6989  col_std=4417",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 38,
+    "title": "[medgemma4b] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.672  uniform_CV=0.577  col_mean=4438  col_std=2984",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 39,
+    "title": "[meditron] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.546  uniform_CV=0.577  col_mean=9202  col_std=5029",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 40,
+    "title": "[afm_openmed45] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.631  uniform_CV=0.577  col_mean=8266  col_std=5216",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 41,
+    "title": "[qwen25_8b] Column indices clustered vs uniform?",
+    "finding": "actual_CV=0.546  uniform_CV=0.577  col_mean=9202  col_std=5029",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 42,
+    "title": "[base_afm45] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.000  top5_frac=0.000  max_ems=0.00000  mean_ems=0.00000",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 43,
+    "title": "[gemma4b] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.500  top5_frac=0.334  max_ems=0.00111  mean_ems=0.00028",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 44,
+    "title": "[llama3_8b] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.589  top5_frac=0.436  max_ems=0.12502  mean_ems=0.01365",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 45,
+    "title": "[med42] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.413  top5_frac=0.318  max_ems=0.11727  mean_ems=0.02060",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 46,
+    "title": "[medgemma4b] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.516  top5_frac=0.300  max_ems=0.08531  mean_ems=0.01635",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 47,
+    "title": "[meditron] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.478  top5_frac=0.328  max_ems=0.03219  mean_ems=0.00995",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 48,
+    "title": "[afm_openmed45] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.470  top5_frac=0.369  max_ems=0.03078  mean_ems=0.00834",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 49,
+    "title": "[qwen25_8b] EMS concentration (Gini/top5)",
+    "finding": "Gini=0.573  top5_frac=0.480  max_ems=0.02305  mean_ems=0.00390",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 50,
+    "title": "EMS distribution: BASE vs SFT (KS test)",
+    "finding": "KS_stat=0.573  BASE_mean=0.00593  SFT_mean=0.01844",
+    "p": 7.440655781995802e-26,
+    "effect": 0.5727453580901857,
+    "significant": "True"
+  },
+  {
+    "n": 51,
+    "title": "EMS distribution: BASE vs CPT+SFT (KS test)",
+    "finding": "KS_stat=0.365  BASE_mean=0.00593  CPT+SFT_mean=0.00995",
+    "p": 6.564265592925817e-05,
+    "effect": 0.3648119122257053,
+    "significant": "True"
+  },
+  {
+    "n": 52,
+    "title": "EMS distribution: SFT vs CPT+SFT (KS test)",
+    "finding": "KS_stat=0.282  SFT_mean=0.01844  CPT+SFT_mean=0.00995",
+    "p": 0.008164707376090501,
+    "effect": 0.28216783216783214,
+    "significant": "True"
+  },
+  {
+    "n": 53,
+    "title": "[base_afm45] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=nan",
+    "effect": NaN,
+    "significant": false
+  },
+  {
+    "n": 54,
+    "title": "[base_afm45] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=nan",
+    "effect": NaN,
+    "significant": false
+  },
+  {
+    "n": 55,
+    "title": "[base_afm45] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=nan",
+    "effect": NaN,
+    "significant": false
+  },
+  {
+    "n": 56,
+    "title": "[gemma4b] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=-0.002",
+    "p": 0.9881485877347969,
+    "effect": -0.002202047495085321,
+    "significant": "False"
+  },
+  {
+    "n": 57,
+    "title": "[gemma4b] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.095",
+    "p": 0.5201806982270771,
+    "effect": 0.09511512006353184,
+    "significant": "False"
+  },
+  {
+    "n": 58,
+    "title": "[gemma4b] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.066",
+    "p": 0.6577636040524601,
+    "effect": 0.06560226698634299,
+    "significant": "False"
+  },
+  {
+    "n": 59,
+    "title": "[llama3_8b] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=0.593",
+    "p": 2.466363815742521e-07,
+    "effect": 0.5927333502778247,
+    "significant": "True"
+  },
+  {
+    "n": 60,
+    "title": "[llama3_8b] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.010",
+    "p": 0.9348111933520393,
+    "effect": 0.010429426815708109,
+    "significant": "False"
+  },
+  {
+    "n": 61,
+    "title": "[llama3_8b] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.163",
+    "p": 0.19844656210351744,
+    "effect": 0.16288308176804153,
+    "significant": "False"
+  },
+  {
+    "n": 62,
+    "title": "[med42] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=0.600",
+    "p": 1.6521546024846892e-07,
+    "effect": 0.5995375154376396,
+    "significant": "True"
+  },
+  {
+    "n": 63,
+    "title": "[med42] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.154",
+    "p": 0.22490644258222117,
+    "effect": 0.1538250177858425,
+    "significant": "False"
+  },
+  {
+    "n": 64,
+    "title": "[med42] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.195",
+    "p": 0.12282054626612651,
+    "effect": 0.1948667468562402,
+    "significant": "False"
+  },
+  {
+    "n": 65,
+    "title": "[medgemma4b] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=0.187",
+    "p": 0.13316782099722743,
+    "effect": 0.186787489079008,
+    "significant": "False"
+  },
+  {
+    "n": 66,
+    "title": "[medgemma4b] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=-0.180",
+    "p": 0.1471885709691883,
+    "effect": -0.180404573996835,
+    "significant": "False"
+  },
+  {
+    "n": 67,
+    "title": "[medgemma4b] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=-0.171",
+    "p": 0.1707360696750214,
+    "effect": -0.17063671149679702,
+    "significant": "False"
+  },
+  {
+    "n": 68,
+    "title": "[meditron] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=0.058",
+    "p": 0.7067241182233096,
+    "effect": 0.05835478475408139,
+    "significant": "False"
+  },
+  {
+    "n": 69,
+    "title": "[meditron] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.079",
+    "p": 0.6080201397244803,
+    "effect": 0.07948863835753844,
+    "significant": "False"
+  },
+  {
+    "n": 70,
+    "title": "[meditron] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=-0.268",
+    "p": 0.0787686966780812,
+    "effect": -0.2678544936592926,
+    "significant": "False"
+  },
+  {
+    "n": 71,
+    "title": "[afm_openmed45] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=-0.017",
+    "p": 0.9189017210453767,
+    "effect": -0.017086532951922622,
+    "significant": "False"
+  },
+  {
+    "n": 72,
+    "title": "[afm_openmed45] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.214",
+    "p": 0.19653005131558574,
+    "effect": 0.21422316737628244,
+    "significant": "False"
+  },
+  {
+    "n": 73,
+    "title": "[afm_openmed45] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.189",
+    "p": 0.2567064118307059,
+    "effect": 0.18863687190622525,
+    "significant": "False"
+  },
+  {
+    "n": 74,
+    "title": "[qwen25_8b] MedQA\u2194MedMCQA per-neuron correlation",
+    "finding": "r=0.179",
+    "p": 0.24397326976672323,
+    "effect": 0.17938232675979413,
+    "significant": "False"
+  },
+  {
+    "n": 75,
+    "title": "[qwen25_8b] MedQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=-0.108",
+    "p": 0.4852463206287372,
+    "effect": -0.10801184958286678,
+    "significant": "False"
+  },
+  {
+    "n": 76,
+    "title": "[qwen25_8b] MedMCQA\u2194PubMedQA per-neuron correlation",
+    "finding": "r=0.201",
+    "p": 0.1902139764034392,
+    "effect": 0.20124788944216593,
+    "significant": "False"
+  },
+  {
+    "n": 77,
+    "title": "[base_afm45] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=0  Binary-helper(help_pmqa,hurt_mqa)=0  Neutral=38  Total=38",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 78,
+    "title": "[gemma4b] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=6  Binary-helper(help_pmqa,hurt_mqa)=12  Neutral=44  Total=48",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 79,
+    "title": "[gemma4b] MCQ-specialist vs binary-helper: layer difference?",
+    "finding": "MCQ_layer=12.7  binary_layer=13.7",
+    "p": 0.9246004957190515,
+    "effect": -1.0,
+    "significant": "False"
+  },
+  {
+    "n": 80,
+    "title": "[llama3_8b] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=30  Binary-helper(help_pmqa,hurt_mqa)=3  Neutral=7  Total=64",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 81,
+    "title": "[llama3_8b] MCQ-specialist vs binary-helper: layer difference?",
+    "finding": "MCQ_layer=18.9  binary_layer=20.7",
+    "p": 0.5710237068271469,
+    "effect": -1.7666666666666693,
+    "significant": "False"
+  },
+  {
+    "n": 82,
+    "title": "[med42] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=31  Binary-helper(help_pmqa,hurt_mqa)=0  Neutral=0  Total=64",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 83,
+    "title": "[medgemma4b] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=13  Binary-helper(help_pmqa,hurt_mqa)=22  Neutral=2  Total=66",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 84,
+    "title": "[medgemma4b] MCQ-specialist vs binary-helper: layer difference?",
+    "finding": "MCQ_layer=17.0  binary_layer=14.0",
+    "p": 0.01805053720594992,
+    "effect": 3.0,
+    "significant": "True"
+  },
+  {
+    "n": 85,
+    "title": "[meditron] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=4  Binary-helper(help_pmqa,hurt_mqa)=5  Neutral=0  Total=44",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 86,
+    "title": "[meditron] MCQ-specialist vs binary-helper: layer difference?",
+    "finding": "MCQ_layer=16.5  binary_layer=17.8",
+    "p": 0.9004375366342199,
+    "effect": -1.3000000000000007,
+    "significant": "False"
+  },
+  {
+    "n": 87,
+    "title": "[afm_openmed45] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=11  Binary-helper(help_pmqa,hurt_mqa)=3  Neutral=4  Total=38",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 88,
+    "title": "[afm_openmed45] MCQ-specialist vs binary-helper: layer difference?",
+    "finding": "MCQ_layer=18.2  binary_layer=19.3",
+    "p": 0.38439032076530066,
+    "effect": -1.1515151515151487,
+    "significant": "False"
+  },
+  {
+    "n": 89,
+    "title": "[qwen25_8b] Functional breakdown",
+    "finding": "MCQ-specialist(help_mqa,hurt_pmqa)=8  Binary-helper(help_pmqa,hurt_mqa)=16  Neutral=7  Total=44",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 90,
+    "title": "[qwen25_8b] MCQ-specialist vs binary-helper: layer difference?",
+    "finding": "MCQ_layer=14.4  binary_layer=17.1",
+    "p": 0.10274712525961056,
+    "effect": -2.75,
+    "significant": "False"
+  },
+  {
+    "n": 91,
+    "title": "[base_afm45] Cross-dataset sign consistency",
+    "finding": "consistent=38/38 = 100.0%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 92,
+    "title": "[gemma4b] Cross-dataset sign consistency",
+    "finding": "consistent=14/48 = 29.2%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 93,
+    "title": "[llama3_8b] Cross-dataset sign consistency",
+    "finding": "consistent=25/64 = 39.1%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 94,
+    "title": "[med42] Cross-dataset sign consistency",
+    "finding": "consistent=31/64 = 48.4%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 95,
+    "title": "[medgemma4b] Cross-dataset sign consistency",
+    "finding": "consistent=17/66 = 25.8%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 96,
+    "title": "[meditron] Cross-dataset sign consistency",
+    "finding": "consistent=17/44 = 38.6%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 97,
+    "title": "[afm_openmed45] Cross-dataset sign consistency",
+    "finding": "consistent=15/38 = 39.5%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 98,
+    "title": "[qwen25_8b] Cross-dataset sign consistency",
+    "finding": "consistent=13/44 = 29.5%",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 99,
+    "title": "[base_afm45] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=nan  (positive = later layers have bigger effects)",
+    "effect": NaN,
+    "significant": false
+  },
+  {
+    "n": 100,
+    "title": "[gemma4b] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=-0.283  (positive = later layers have bigger effects)",
+    "p": 0.05134922188824059,
+    "effect": -0.28293075802078754,
+    "significant": "False"
+  },
+  {
+    "n": 101,
+    "title": "[llama3_8b] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=-0.124  (positive = later layers have bigger effects)",
+    "p": 0.3302639741517601,
+    "effect": -0.12366719636441524,
+    "significant": "False"
+  },
+  {
+    "n": 102,
+    "title": "[med42] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=0.012  (positive = later layers have bigger effects)",
+    "p": 0.9219590596311767,
+    "effect": 0.012491510913417565,
+    "significant": "False"
+  },
+  {
+    "n": 103,
+    "title": "[medgemma4b] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=0.240  (positive = later layers have bigger effects)",
+    "p": 0.05209181052926084,
+    "effect": 0.24016648308751604,
+    "significant": "False"
+  },
+  {
+    "n": 104,
+    "title": "[meditron] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=-0.118  (positive = later layers have bigger effects)",
+    "p": 0.44544851258207097,
+    "effect": -0.11802516221257295,
+    "significant": "False"
+  },
+  {
+    "n": 105,
+    "title": "[afm_openmed45] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=0.147  (positive = later layers have bigger effects)",
+    "p": 0.37725732247355204,
+    "effect": 0.14737387523584183,
+    "significant": "False"
+  },
+  {
+    "n": 106,
+    "title": "[qwen25_8b] Layer depth \u2192 |EMS| correlation",
+    "finding": "r=0.144  (positive = later layers have bigger effects)",
+    "p": 0.3506493567796366,
+    "effect": 0.14411734777203655,
+    "significant": "False"
+  },
+  {
+    "n": 107,
+    "title": "[gemma4b] Layer depth predicts sabotage sign?",
+    "finding": "r=-0.127  (positive = deeper \u2192 more sabotage)",
+    "p": 0.3900465955004677,
+    "effect": -0.12690537903132812,
+    "significant": "False"
+  },
+  {
+    "n": 108,
+    "title": "[llama3_8b] Layer depth predicts sabotage sign?",
+    "finding": "r=0.000  (positive = deeper \u2192 more sabotage)",
+    "p": 1.0,
+    "effect": 0.0,
+    "significant": "False"
+  },
+  {
+    "n": 109,
+    "title": "[med42] Layer depth predicts sabotage sign?",
+    "finding": "r=0.291  (positive = deeper \u2192 more sabotage)",
+    "p": 0.019745548080804576,
+    "effect": 0.29079698899591394,
+    "significant": "True"
+  },
+  {
+    "n": 110,
+    "title": "[medgemma4b] Layer depth predicts sabotage sign?",
+    "finding": "r=0.361  (positive = deeper \u2192 more sabotage)",
+    "p": 0.0029154924187804036,
+    "effect": 0.3608473284272204,
+    "significant": "True"
+  },
+  {
+    "n": 111,
+    "title": "[meditron] Layer depth predicts sabotage sign?",
+    "finding": "r=-0.006  (positive = deeper \u2192 more sabotage)",
+    "p": 0.9708236437820282,
+    "effect": -0.005677334756682626,
+    "significant": "False"
+  },
+  {
+    "n": 112,
+    "title": "[afm_openmed45] Layer depth predicts sabotage sign?",
+    "finding": "r=-0.046  (positive = deeper \u2192 more sabotage)",
+    "p": 0.7818142607462388,
+    "effect": -0.04645572510715473,
+    "significant": "False"
+  },
+  {
+    "n": 113,
+    "title": "[qwen25_8b] Layer depth predicts sabotage sign?",
+    "finding": "r=-0.353  (positive = deeper \u2192 more sabotage)",
+    "p": 0.018614829990466708,
+    "effect": -0.35339372772978717,
+    "significant": "True"
+  },
+  {
+    "n": 114,
+    "title": "[base_afm45] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=nan  (positive = deeper layers more MCQ-specific)",
+    "effect": NaN,
+    "significant": false
+  },
+  {
+    "n": 115,
+    "title": "[gemma4b] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=0.062  (positive = deeper layers more MCQ-specific)",
+    "p": 0.6745871090407165,
+    "effect": 0.062182090033941845,
+    "significant": "False"
+  },
+  {
+    "n": 116,
+    "title": "[llama3_8b] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=-0.118  (positive = deeper layers more MCQ-specific)",
+    "p": 0.3516344986614961,
+    "effect": -0.1183506619344063,
+    "significant": "False"
+  },
+  {
+    "n": 117,
+    "title": "[med42] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=0.004  (positive = deeper layers more MCQ-specific)",
+    "p": 0.9755345831916609,
+    "effect": 0.003910517498318575,
+    "significant": "False"
+  },
+  {
+    "n": 118,
+    "title": "[medgemma4b] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=-0.133  (positive = deeper layers more MCQ-specific)",
+    "p": 0.28610903713680647,
+    "effect": -0.13326070058285502,
+    "significant": "False"
+  },
+  {
+    "n": 119,
+    "title": "[meditron] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=0.082  (positive = deeper layers more MCQ-specific)",
+    "p": 0.597256597168343,
+    "effect": 0.08187482536344325,
+    "significant": "False"
+  },
+  {
+    "n": 120,
+    "title": "[afm_openmed45] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=0.244  (positive = deeper layers more MCQ-specific)",
+    "p": 0.1404594388124136,
+    "effect": 0.24364627439841394,
+    "significant": "False"
+  },
+  {
+    "n": 121,
+    "title": "[qwen25_8b] Layer depth \u2192 MCQ/binary EMS divergence",
+    "finding": "r=0.268  (positive = deeper layers more MCQ-specific)",
+    "p": 0.07872147750294599,
+    "effect": 0.2678952227118474,
+    "significant": "False"
+  },
+  {
+    "n": 122,
+    "title": "KRUSKAL-WALLIS: Do all models differ in anchor layer distribution?",
+    "finding": "H=83.570  k=8 groups",
+    "p": 2.571248447378055e-15,
+    "effect": 83.56981265019377,
+    "significant": "True"
+  },
+  {
+    "n": 123,
+    "title": "CROSS-MODEL: Anchor count vs sabotage rate",
+    "finding": "r=0.400  models: base_afm45(38,0%), gemma4b(48,67%), llama3_8b(64,52%), med42(64,48%), medgemma4b(66,35%), meditron(44,11%), afm_openmed45(38,42%), qwen25_8b(44,39%)",
+    "p": 0.3260725127433412,
+    "effect": 0.4000661320993194,
+    "significant": "False"
+  },
+  {
+    "n": 124,
+    "title": "your title here",
+    "finding": "Skipped (degenerate data)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 125,
+    "title": "[base_afm45] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['16.8', '21.2']",
+    "p": 0.00511881815586629,
+    "effect": 7.8369754646791785,
+    "significant": "True"
+  },
+  {
+    "n": 126,
+    "title": "[gemma4b] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['11.0', '13.8', '11.9']",
+    "p": 0.05740066891773442,
+    "effect": 5.7153986442109055,
+    "significant": "False"
+  },
+  {
+    "n": 127,
+    "title": "[llama3_8b] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['19.0', '17.3']",
+    "p": 0.27088770031203435,
+    "effect": 1.2122463176704192,
+    "significant": "False"
+  },
+  {
+    "n": 128,
+    "title": "[med42] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['18.9', '19.2']",
+    "p": 0.8453368040845399,
+    "effect": 0.03805297462210803,
+    "significant": "False"
+  },
+  {
+    "n": 129,
+    "title": "[medgemma4b] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['14.3', '17.6', '19.3']",
+    "p": 0.013918210804931294,
+    "effect": 8.549114332931163,
+    "significant": "True"
+  },
+  {
+    "n": 130,
+    "title": "[meditron] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['16.2', '17.6']",
+    "p": 0.347944405827906,
+    "effect": 0.8809397968172504,
+    "significant": "False"
+  },
+  {
+    "n": 131,
+    "title": "[afm_openmed45] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['18.8', '16.6', '15.5']",
+    "p": 0.11030997787615893,
+    "effect": 4.408921791122958,
+    "significant": "False"
+  },
+  {
+    "n": 132,
+    "title": "[qwen25_8b] Cluster \u2192 layer position?",
+    "finding": "cluster_layer_means=['16.9', '19.2']",
+    "p": 0.24146438188761052,
+    "effect": 1.37202431969147,
+    "significant": "False"
+  },
+  {
+    "n": 133,
+    "title": "[base_afm45] Cluster \u2192 |EMS| magnitude?",
+    "finding": "Skipped (degenerate data)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 134,
+    "title": "[gemma4b] Cluster \u2192 |EMS| magnitude?",
+    "finding": "cluster_ems_means=['0.00036', '0.00014', '0.00069']",
+    "p": 3.70353074743779e-06,
+    "effect": 25.012447874525407,
+    "significant": "True"
+  },
+  {
+    "n": 135,
+    "title": "[llama3_8b] Cluster \u2192 |EMS| magnitude?",
+    "finding": "cluster_ems_means=['0.00937', '0.10078']",
+    "p": 0.0036573847975661274,
+    "effect": 8.446540592517989,
+    "significant": "True"
+  },
+  {
+    "n": 136,
+    "title": "[med42] Cluster \u2192 |EMS| magnitude?",
+    "finding": "cluster_ems_means=['0.01563', '0.09512']",
+    "p": 0.0008733701694456762,
+    "effect": 11.078444841324375,
+    "significant": "True"
+  },
+  {
+    "n": 137,
+    "title": "[medgemma4b] Cluster \u2192 |EMS| magnitude?",
+    "finding": "cluster_ems_means=['0.01212', '0.03277', '0.05698']",
+    "p": 0.00023381627664643989,
+    "effect": 16.72194978705797,
+    "significant": "True"
+  },
+  {
+    "n": 138,
+    "title": "[meditron] Cluster \u2192 |EMS| magnitude?",
+    "finding": "cluster_ems_means=['0.01940', '0.00554']",
+    "p": 1.63022865149159e-05,
+    "effect": 18.57880717308082,
+    "significant": "True"
+  },
+  {
+    "n": 139,
+    "title": "[afm_openmed45] Cluster \u2192 |EMS| magnitude?",
+    "finding": "cluster_ems_means=['0.01662', '0.00379', '0.01191']",
+    "p": 4.531629234042701e-06,
+    "effect": 24.60885805763076,
+    "significant": "True"
+  },
+  {
+    "n": 140,
+    "title": "[qwen25_8b] Cluster \u2192 |EMS| magnitude?",
+    "finding": "cluster_ems_means=['0.00312', '0.01172']",
+    "p": 0.030374977196274206,
+    "effect": 4.687943687813116,
+    "significant": "True"
+  },
+  {
+    "n": 141,
+    "title": "[base_afm45] Layer distribution entropy",
+    "finding": "H=2.094  H_max=2.303  normalized=0.909  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 142,
+    "title": "[gemma4b] Layer distribution entropy",
+    "finding": "H=2.214  H_max=2.303  normalized=0.962  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 143,
+    "title": "[llama3_8b] Layer distribution entropy",
+    "finding": "H=2.152  H_max=2.303  normalized=0.935  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 144,
+    "title": "[med42] Layer distribution entropy",
+    "finding": "H=2.152  H_max=2.303  normalized=0.935  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 145,
+    "title": "[medgemma4b] Layer distribution entropy",
+    "finding": "H=2.138  H_max=2.303  normalized=0.928  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 146,
+    "title": "[meditron] Layer distribution entropy",
+    "finding": "H=2.091  H_max=2.303  normalized=0.908  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 147,
+    "title": "[afm_openmed45] Layer distribution entropy",
+    "finding": "H=2.094  H_max=2.303  normalized=0.909  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 148,
+    "title": "[qwen25_8b] Layer distribution entropy",
+    "finding": "H=2.091  H_max=2.303  normalized=0.908  (1=uniform, 0=concentrated)",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 149,
+    "title": "[gemma4b] Sabotage label \u2194 layer (point-biserial r)",
+    "finding": "r=-0.112  (positive = sabotage neurons deeper)",
+    "p": 0.44779524675670895,
+    "effect": -0.11217648024962916,
+    "significant": "False"
+  },
+  {
+    "n": 150,
+    "title": "[llama3_8b] Sabotage label \u2194 layer (point-biserial r)",
+    "finding": "r=0.005  (positive = sabotage neurons deeper)",
+    "p": 0.9679063664492337,
+    "effect": 0.0051303665203902525,
+    "significant": "False"
+  },
+  {
+    "n": 151,
+    "title": "[med42] Sabotage label \u2194 layer (point-biserial r)",
+    "finding": "r=0.295  (positive = sabotage neurons deeper)",
+    "p": 0.01793317809653259,
+    "effect": 0.2950693658727327,
+    "significant": "True"
+  },
+  {
+    "n": 152,
+    "title": "[medgemma4b] Sabotage label \u2194 layer (point-biserial r)",
+    "finding": "r=0.344  (positive = sabotage neurons deeper)",
+    "p": 0.004693056403863622,
+    "effect": 0.3439134427317312,
+    "significant": "True"
+  },
+  {
+    "n": 153,
+    "title": "[meditron] Sabotage label \u2194 layer (point-biserial r)",
+    "finding": "r=-0.015  (positive = sabotage neurons deeper)",
+    "p": 0.923333229612809,
+    "effect": -0.01493732990248145,
+    "significant": "False"
+  },
+  {
+    "n": 154,
+    "title": "[afm_openmed45] Sabotage label \u2194 layer (point-biserial r)",
+    "finding": "r=0.004  (positive = sabotage neurons deeper)",
+    "p": 0.9829249908373984,
+    "effect": 0.003591839559098613,
+    "significant": "False"
+  },
+  {
+    "n": 155,
+    "title": "[qwen25_8b] Sabotage label \u2194 layer (point-biserial r)",
+    "finding": "r=-0.364  (positive = sabotage neurons deeper)",
+    "p": 0.015270317769656401,
+    "effect": -0.36357287878891414,
+    "significant": "True"
+  },
+  {
+    "n": 156,
+    "title": "[base_afm45] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=5.102  col_mean=8266  col_std=5216",
+    "p": 0.07799539094134494,
+    "effect": 5.10221108906807,
+    "significant": "False"
+  },
+  {
+    "n": 157,
+    "title": "[gemma4b] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=5.979  col_mean=4393  col_std=2834",
+    "p": 0.050306843333605064,
+    "effect": 5.9792283215211475,
+    "significant": "False"
+  },
+  {
+    "n": 158,
+    "title": "[llama3_8b] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=35.993  col_mean=6989  col_std=4417",
+    "p": 1.528247744080266e-08,
+    "effect": 35.993117860345,
+    "significant": "True"
+  },
+  {
+    "n": 159,
+    "title": "[med42] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=35.993  col_mean=6989  col_std=4417",
+    "p": 1.528247744080266e-08,
+    "effect": 35.993117860345,
+    "significant": "True"
+  },
+  {
+    "n": 160,
+    "title": "[medgemma4b] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=15.249  col_mean=4438  col_std=2984",
+    "p": 0.0004884026935615576,
+    "effect": 15.248740601340256,
+    "significant": "True"
+  },
+  {
+    "n": 161,
+    "title": "[meditron] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=2.314  col_mean=9202  col_std=5029",
+    "p": 0.3143803388744784,
+    "effect": 2.314303511538047,
+    "significant": "False"
+  },
+  {
+    "n": 162,
+    "title": "[afm_openmed45] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=5.102  col_mean=8266  col_std=5216",
+    "p": 0.07799539094134494,
+    "effect": 5.10221108906807,
+    "significant": "False"
+  },
+  {
+    "n": 163,
+    "title": "[qwen25_8b] Column distribution non-normal (bimodal/clustered)?",
+    "finding": "D=2.314  col_mean=9202  col_std=5029",
+    "p": 0.3143803388744784,
+    "effect": 2.314303511538047,
+    "significant": "False"
+  },
+  {
+    "n": 164,
+    "title": "GLOBAL: Sabotage neurons in different column ranges?",
+    "finding": "sab_col_mean=6892  norm_col_mean=7046",
+    "p": 0.897041147884193,
+    "effect": -153.5079681784464,
+    "significant": "False"
+  },
+  {
+    "n": 165,
+    "title": "CROSS-MODEL: Depth shift predicts sabotage rate?",
+    "finding": "r=-0.071  pairs=[('gemma4b', np.float64(-0.75), 0.6666666666666666), ('llama3_8b', np.float64(0.03421309872922862), 0.515625), ('med42', np.float64(1.9677419354838719), 0.484375), ('medgemma4b', np.float64(2.965621840242669), 0.3484848484848485), ('meditron', np.float64(-0.17948717948717885), 0.11363636363636363), ('afm_openmed45', np.float64(0.022727272727273373), 0.42105263157894735), ('qwen25_8b', np.float64(-2.8474945533769063), 0.38636363636363635)]",
+    "p": 0.8790481931481541,
+    "effect": -0.07142857142857144,
+    "significant": "False"
+  },
+  {
+    "n": 166,
+    "title": "[gemma4b] PubMedQA sign predicts MedMCQA EMS?",
+    "finding": "if_pmqa_pos\u2192mmcqa=-0.00002  if_pmqa_neg\u2192mmcqa=-0.00020",
+    "p": 0.8439532650922197,
+    "effect": 0.00017486572809843892,
+    "significant": "False"
+  },
+  {
+    "n": 167,
+    "title": "[llama3_8b] PubMedQA sign predicts MedMCQA EMS?",
+    "finding": "if_pmqa_pos\u2192mmcqa=+0.01070  if_pmqa_neg\u2192mmcqa=+0.00462",
+    "p": 0.10293198350419795,
+    "effect": 0.006079545484019698,
+    "significant": "False"
+  },
+  {
+    "n": 168,
+    "title": "[med42] PubMedQA sign predicts MedMCQA EMS?",
+    "finding": "if_pmqa_pos\u2192mmcqa=+0.02552  if_pmqa_neg\u2192mmcqa=+0.01314",
+    "p": 0.23713947829093696,
+    "effect": 0.012385600070059524,
+    "significant": "False"
+  },
+  {
+    "n": 169,
+    "title": "[medgemma4b] PubMedQA sign predicts MedMCQA EMS?",
+    "finding": "if_pmqa_pos\u2192mmcqa=+0.01806  if_pmqa_neg\u2192mmcqa=+0.02019",
+    "p": 0.46681901427813655,
+    "effect": -0.002133815201179126,
+    "significant": "False"
+  },
+  {
+    "n": 170,
+    "title": "[meditron] PubMedQA sign predicts MedMCQA EMS?",
+    "finding": "if_pmqa_pos\u2192mmcqa=+0.00122  if_pmqa_neg\u2192mmcqa=+0.00425",
+    "p": 0.14975311999513635,
+    "effect": -0.00303289474901057,
+    "significant": "False"
+  },
+  {
+    "n": 171,
+    "title": "[afm_openmed45] PubMedQA sign predicts MedMCQA EMS?",
+    "finding": "if_pmqa_pos\u2192mmcqa=+0.01757  if_pmqa_neg\u2192mmcqa=+0.01141",
+    "p": 0.34500377079033506,
+    "effect": 0.006159539512162537,
+    "significant": "False"
+  },
+  {
+    "n": 172,
+    "title": "[qwen25_8b] PubMedQA sign predicts MedMCQA EMS?",
+    "finding": "if_pmqa_pos\u2192mmcqa=+0.00327  if_pmqa_neg\u2192mmcqa=-0.00033",
+    "p": 0.05623517880800005,
+    "effect": 0.0035950366913354683,
+    "significant": "False"
+  },
+  {
+    "n": 173,
+    "title": "Universal neurons: same (layer,col) across multiple models?",
+    "finding": "Shared pairs=194  top_shared=[((16, 12646), 2), ((19, 8084), 2), ((12, 4348), 2), ((13, 7617), 2), ((12, 1751), 2)]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 174,
+    "title": "GLOBAL: Sabotage vs helper column index distribution",
+    "finding": "sab_col_mean=6892  help_col_mean=6853",
+    "p": 0.8467596997072475,
+    "effect": 38.66692943179714,
+    "significant": "False"
+  },
+  {
+    "n": 175,
+    "title": "CHI2: Layer(early/late) \u00d7 Sabotage \u2014 interaction with SFT/RL?",
+    "finding": "contingency=\n[[44. 14.]\n [32. 40.]]\nchi2=11.795",
+    "p": 0.0005938093946141065,
+    "effect": 11.79528441087286,
+    "significant": "True"
+  },
+  {
+    "n": 176,
+    "title": "[base_afm45] Largest anchor-free zone",
+    "finding": "gap=2 layers  between L14 and L16  anchor_layers=[12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 177,
+    "title": "[gemma4b] Largest anchor-free zone",
+    "finding": "gap=1 layers  between L8 and L9  anchor_layers=[8, 9, 10, 11, 12, 13, 14, 15, 16, 17]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 178,
+    "title": "[llama3_8b] Largest anchor-free zone",
+    "finding": "gap=1 layers  between L14 and L15  anchor_layers=[14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 179,
+    "title": "[med42] Largest anchor-free zone",
+    "finding": "gap=1 layers  between L14 and L15  anchor_layers=[14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 180,
+    "title": "[medgemma4b] Largest anchor-free zone",
+    "finding": "gap=2 layers  between L22 and L24  anchor_layers=[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 181,
+    "title": "[meditron] Largest anchor-free zone",
+    "finding": "gap=1 layers  between L11 and L12  anchor_layers=[11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 182,
+    "title": "[afm_openmed45] Largest anchor-free zone",
+    "finding": "gap=2 layers  between L14 and L16  anchor_layers=[12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  },
+  {
+    "n": 183,
+    "title": "[qwen25_8b] Largest anchor-free zone",
+    "finding": "gap=1 layers  between L11 and L12  anchor_layers=[11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]",
+    "p": null,
+    "effect": null,
+    "significant": false
+  }
+]
