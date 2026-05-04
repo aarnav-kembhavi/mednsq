@@ -1,5 +1,5 @@
 """
-MED42 cross-dataset anchor profiling.
+AlphaMed cross-dataset anchor profiling.
 
 For each anchor neuron, measures margin drop across:
   - MedQA (4-option MCQ)
@@ -33,30 +33,25 @@ from mednsq_probe import MedNSQProbe
 
 import torch._dynamo
 torch._dynamo.config.suppress_errors = True
+
 # =====================================================================
 # MODEL + ANCHORS
 # =====================================================================
-# Med42 anchors from validated discovery pipeline (ablation_med42_8b.json,
-# z=259 at K=32 on MedQA). Top 64, sorted by drop_val descending.
-MED42_ANCHORS = [
-    (19, 7232), (20, 4299), (14, 8), (24, 5326), (18, 7417),
-    (23, 306), (20, 3476), (14, 318), (21, 12445), (18, 10857),
-    (18, 2694), (15, 1706), (15, 11853), (17, 10284), (14, 12639),
-    (17, 300), (20, 4891), (26, 10664), (15, 10813), (19, 1498),
-    (24, 12457), (21, 3481), (20, 10638), (25, 2989), (17, 8887),
-    (25, 9150), (16, 8902), (21, 8329), (19, 9770), (15, 6589),
-    (15, 9394), (20, 2786), (14, 10529), (20, 1104), (15, 1933),
-    (16, 5431), (19, 4882), (19, 8771), (23, 13141), (16, 11807),
-    (20, 4965), (23, 13240), (15, 9483), (18, 13221), (17, 13564),
-    (25, 560), (17, 529), (20, 5410), (18, 8527), (19, 12134),
-    (21, 713), (16, 10142), (23, 13799), (24, 14298), (20, 13028),
-    (17, 1829), (18, 11143), (23, 2565), (26, 2589), (16, 2024),
-    (22, 5944), (17, 7471), (15, 2298), (16, 7809),
+# AlphaMed anchors from validated discovery pipeline (top 43 by drop_val)
+ALPHAMED_ANCHORS = [
+    (18, 10220), (12, 11452), (20, 2163), (19, 13744), (17, 16475),
+    (12, 606), (20, 13290), (14, 903), (20, 9558), (12, 4149),
+    (12, 16751), (15, 7484), (22, 9786), (15, 640), (15, 3642),
+    (14, 15227), (13, 8480), (23, 5298), (17, 6201), (16, 16736),
+    (19, 15268), (20, 11735), (14, 10204), (12, 8109), (16, 4570),
+    (12, 12574), (15, 10782), (16, 3147), (17, 14360), (15, 10943),
+    (14, 298), (15, 12746), (15, 13037), (17, 1105), (13, 15954),
+    (21, 15935), (19, 19), (16, 12676), (20, 4058), (19, 17493),
+    (14, 12430), (21, 14816), (14, 14576),
 ]
- # Keep variable name for compatibility
 
-MODEL_ID = "meta-llama/Meta-Llama-3-8B"
-MODEL_KEY: str = "llama3_8b"
+MODEL_PATH = "/workspace/AlphaMed-7B-instruct-rl"  # Local path
+MODEL_KEY: str = "alphamed_7b"
 
 
 @dataclass
@@ -441,8 +436,8 @@ def auto_kmeans(features: np.ndarray, k_max: int, seed: int = 42) -> Tuple[np.nd
 # =====================================================================
 def evaluate(cfg: EvalConfig) -> Dict[str, Any]:
     print("=" * 72)
-    print(f"MODEL: {MODEL_KEY} ({MODEL_ID})")
-    print(f"Anchors: {len(MED42_ANCHORS)}")
+    print(f"MODEL: {MODEL_KEY} ({MODEL_PATH})")
+    print(f"Anchors: {len(ALPHAMED_ANCHORS)}")
     print("=" * 72)
 
     random.seed(cfg.random_seed)
@@ -451,18 +446,16 @@ def evaluate(cfg: EvalConfig) -> Dict[str, Any]:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(cfg.random_seed)
 
-    print("\n[1/4] Loading model...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    print("\n[1/4] Loading model from local path...")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, local_files_only=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    # Qwen2.5 specific: ensure chat template doesn't interfere
-      # Use base template for our prompts
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID,
-        torch_dtype=torch.float16,  # Changed from float16 to bfloat16 for better 8B support
+        MODEL_PATH,
+        torch_dtype=torch.float16,
         device_map="auto",
-        trust_remote_code=True,
-        low_cpu_mem_usage=True,  # Added
+        local_files_only=True,
+        low_cpu_mem_usage=True,
     )
     model.eval()
     probe = MedNSQProbe(model)
@@ -505,10 +498,10 @@ def evaluate(cfg: EvalConfig) -> Dict[str, Any]:
               f"std={m.std().item():.3f} frac_neg={baseline_summary[name]['frac_neg']:.2f}")
 
     # Filter anchors to valid (in-range) ones
-    anchor_neurons = [(l, c) for (l, c) in MED42_ANCHORS
+    anchor_neurons = [(l, c) for (l, c) in ALPHAMED_ANCHORS
                       if 0 <= l < n_layers and 0 <= c < n_cols]
-    if len(anchor_neurons) < len(MED42_ANCHORS):
-        print(f"  Note: {len(MED42_ANCHORS) - len(anchor_neurons)} anchors out-of-range, dropped.")
+    if len(anchor_neurons) < len(ALPHAMED_ANCHORS):
+        print(f"  Note: {len(ALPHAMED_ANCHORS) - len(anchor_neurons)} anchors out-of-range, dropped.")
 
     # Per-anchor drops on each dataset
     rows: List[Dict[str, Any]] = []
@@ -595,13 +588,13 @@ def evaluate(cfg: EvalConfig) -> Dict[str, Any]:
     out = {
         "metadata": {
             "model_key": MODEL_KEY,
-            "model_id": MODEL_ID,
+            "model_path": MODEL_PATH,
             "timestamp": datetime.now().isoformat(),
             "config": asdict(cfg),
             "torch_version": torch.__version__,
             "ablation_method": "column_crush_1bit",
             "anchor_count": len(anchor_neurons),
-            "anchors_input": MED42_ANCHORS,
+            "anchors_input": ALPHAMED_ANCHORS,
             "anchors_used": anchor_neurons,
             "pubmedqa_format": "binary_yes_no",
             "clustering_features": "z-scored relative drops (drop / baseline_margin)",
@@ -622,7 +615,7 @@ def evaluate(cfg: EvalConfig) -> Dict[str, Any]:
 # CLI
 # =====================================================================
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="MED42 cross-dataset anchor profiling")
+    p = argparse.ArgumentParser(description="AlphaMed cross-dataset anchor profiling")
     p.add_argument("--n-medqa", type=int, default=400)
     p.add_argument("--n-medmcqa", type=int, default=400)
     p.add_argument("--n-pubmedqa", type=int, default=400)
