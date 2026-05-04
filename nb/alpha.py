@@ -1,14 +1,14 @@
 """
-End-to-end EMS pipeline for openmed-community/AFM-4.5B-OpenMed-RL-CoT.
+End-to-end EMS pipeline for che111/AlphaMed-7B-instruct-rl.
 
 NOTE on architecture:
-  - AFM-4.5B uses ReLU^2 activation (not SwiGLU) and grouped-query attention.
-  - It is a custom architecture (model_type="arcee") requiring trust_remote_code.
-  - The MLP likely has up_proj + down_proj (no gate). The intervention is still
-    1-bit column crush on down_proj.weight — semantically the same as for
-    SwiGLU models (zeroing one neuron's contribution to the residual).
-  - LAYER RANGE BELOW IS A GUESS. Once the probe prints `layers=N` at startup,
-    edit `middle_layers` to cover the middle ~50% of layers.
+  - AlphaMed-7B-instruct-rl is a fine-tuned Llama 3.1 8B model.
+  - It uses SwiGLU MLP with up_proj / gate_proj / down_proj.
+  - The intervention is still 1-bit column crush on down_proj.weight
+    (zeroing one neuron's contribution to the residual).
+  - LAYER RANGE BELOW IS A GUESS: Llama 3.1 8B has 32 layers.
+    The original script used middle_layers = range(12,24), which covers
+    the middle ~40% of layers. That setting is kept.
 """
 
 import hashlib
@@ -40,8 +40,9 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "/workspace/medphi"
-    # Phi-3.5-mini has 32 layers (0-31). Middle 60% = layers 6-25.
+    model_name: str = "che111/AlphaMed-7B-instruct-rl"   # <-- model changed
+    # Llama 3.1 8B has 32 layers (0-31). Middle 60% = layers 6-25.
+    # Original range (12-24) is kept; it still falls inside the middle.
     middle_layers: Tuple[int, ...] = tuple(range(12, 24))
     seed: int = 42
 
@@ -65,9 +66,9 @@ class Config:
     ablation_test_size: int = 300
 
     # Output
-    discovery_file: str = "anchors_medphi_instruct.json"
-    ablation_file: str = "ablation_medphi_instruct.json"
-    log_file: str = "experiment_medphi_instruct.log"
+    discovery_file: str = "anchors_alphamed_instruct.json"
+    ablation_file: str = "ablation_alphamed_instruct.json"
+    log_file: str = "experiment_alphamed_instruct.log"
 
     intervention_type: str = "column_crush_1bit"
 
@@ -100,9 +101,9 @@ def setup_perf() -> None:
 
 
 def report_architecture(model, probe: MedNSQProbe) -> None:
-    """Print enough about the model to verify probe will work correctly."""
+    """Print architecture information (no hardcoded assertions)."""
     log("=" * 60)
-    log("ARCHITECTURE REPORT — MediPhi-Instruct (Phi-3.5-mini)")
+    log("ARCHITECTURE REPORT — AlphaMed-7B-instruct-rl (Llama 3.1 8B)")
     log("=" * 60)
     log(f"Model class: {type(model).__name__}")
     log(f"Config model_type: {model.config.model_type}")
@@ -111,9 +112,7 @@ def report_architecture(model, probe: MedNSQProbe) -> None:
     log(f"Num layers: {len(probe.layers)}")
     log(f"Num attention heads: {probe.num_heads}")
 
-    # Phi-3.5-mini MLP uses gate_up_proj (fused) + down_proj
-    # gate_up_proj.weight shape: [2 * intermediate_size, hidden_size]
-    # down_proj.weight shape:    [hidden_size, intermediate_size]
+    # Inspect first MLP to verify down_proj exists
     layer0 = probe.layers[0]
     mlp0   = layer0.mlp
     down0  = mlp0.down_proj
@@ -389,51 +388,24 @@ def main():
     log(f"Config: {asdict(CFG)}")
 
     log("Loading tokenizer + model (bf16, device_map=auto)...")
-    # MediPhi-Instruct is standard transformers, no trust_remote_code needed
-    tokenizer = AutoTokenizer.from_pretrained("/workspace/medphi", use_fast=True, local_files_only=True)
+    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     pad_id = tokenizer.pad_token_id
     model = AutoModelForCausalLM.from_pretrained(
-        "/workspace/medphi",
+        CFG.model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
-        local_files_only=True,
     )
 
-    # ---- Manual architecture inspection for MediPhi (Phi-3.5-mini) ----
-    # Do NOT use getattr chains — inspect directly to avoid silent failures
-    log("Inspecting MediPhi architecture manually...")
-    _layers = model.model.layers          # nn.ModuleList, 32 layers
-    _layer0 = _layers[0]
-    _mlp0   = _layer0.mlp
-    # Phi-3.5-mini MLP: gate_up_proj (fused, dim = 2 * intermediate_size) + down_proj
-    # down_proj.weight shape: [hidden_size, intermediate_size]
-    _down0  = _mlp0.down_proj
-    _hidden_size       = _down0.weight.shape[0]   # 3072
-    _intermediate_size = _down0.weight.shape[1]   # 8192
-    _num_layers        = len(_layers)              # 32
-    _num_heads         = model.config.num_attention_heads  # 32
-
-    log(f"  num_layers        = {_num_layers}")
-    log(f"  hidden_size       = {_hidden_size}")
-    log(f"  intermediate_size = {_intermediate_size}")
-    log(f"  num_heads         = {_num_heads}")
-    log(f"  down_proj shape   = {list(_down0.weight.shape)}")
-    # Verify expected values; abort if wrong to avoid silent bugs
-    assert _num_layers == 32,        f"Expected 32 layers, got {_num_layers}"
-    assert _hidden_size == 3072,     f"Expected hidden 3072, got {_hidden_size}"
-    assert _intermediate_size == 8192, f"Expected intermediate 8192, got {_intermediate_size}"
-    log("  Architecture assertions passed.")
-
+    # ---- Automatic architecture detection (no hardcoded shapes) ----
+    log("Inspecting AlphaMed architecture automatically...")
+    # The MedNSQProbe will find layers and MLP structures on its own.
+    # We only need to instantiate the probe and then verify that the
+    # middle_layers range is valid.
     probe = MedNSQProbe(model)
-    # Override probe fields with manually verified values
-    probe.layers           = _layers
-    probe.hidden_size      = _hidden_size
-    probe.intermediate_size = _intermediate_size
-    probe.num_heads        = _num_heads
 
-    # Print full architecture so user can verify before discovery starts
+    # Print architecture info (no assertions that could fail for Llama)
     report_architecture(model, probe)
 
     # Validate middle_layers against actual layer count
