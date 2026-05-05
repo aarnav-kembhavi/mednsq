@@ -27,7 +27,21 @@ def analyze_sabotage_depth():
         if 'anchors' not in data or len(data['anchors']) == 0:
             continue
 
-        model_name = os.path.basename(f).split('_cross')[0].upper()
+        raw = os.path.basename(f).split('_cross')[0].lower()
+
+        name_map = {
+            "gemma4b": "GEMMA4B",
+            "medgemma": "MEDGEMMA",
+            "llama3_8b": "LLAMA3_8B",
+            "med42": "MED42",
+            "alphamed_7b": "ALPHAMED",
+            "qwen25_8b": "QWEN25_8B",
+            "meditron": "MEDITRON",
+            "base_afm": "BASE_AFM",
+            "openmed": "OPENMED",
+        }
+
+        model_name = name_map.get(raw, raw.upper())
         anchors = data['anchors']
 
         # 🔑 Detect correct key dynamically
@@ -71,10 +85,11 @@ def analyze_sabotage_depth():
             "MEDGEMMA",
             "LLAMA3_8B",
             "MED42",
+            "ALPHAMED",
             "QWEN25_8B",
             "MEDITRON",
+            "BASE_AFM",
             "OPENMED",
-            "BASE_AFM"
         ]
 
         stats_dict = {s['model']: s for s in all_stats}

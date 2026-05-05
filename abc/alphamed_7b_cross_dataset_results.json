@@ -1,0 +1,910 @@
+{
+  "metadata": {
+    "model_key": "alphamed_7b",
+    "model_path": "/workspace/AlphaMed-7B-instruct-rl",
+    "timestamp": "2026-05-04T16:42:35.364452",
+    "config": {
+      "n_medqa": 400,
+      "n_medmcqa": 400,
+      "n_pubmedqa": 400,
+      "random_seed": 42,
+      "k_clusters_max": 6,
+      "output_dir": "results",
+      "cache_dir": ".",
+      "max_contexts": 3,
+      "max_context_chars": 2200
+    },
+    "torch_version": "2.11.0+cu126",
+    "ablation_method": "column_crush_1bit",
+    "anchor_count": 43,
+    "anchors_input": [
+      [
+        18,
+        10220
+      ],
+      [
+        12,
+        11452
+      ],
+      [
+        20,
+        2163
+      ],
+      [
+        19,
+        13744
+      ],
+      [
+        17,
+        16475
+      ],
+      [
+        12,
+        606
+      ],
+      [
+        20,
+        13290
+      ],
+      [
+        14,
+        903
+      ],
+      [
+        20,
+        9558
+      ],
+      [
+        12,
+        4149
+      ],
+      [
+        12,
+        16751
+      ],
+      [
+        15,
+        7484
+      ],
+      [
+        22,
+        9786
+      ],
+      [
+        15,
+        640
+      ],
+      [
+        15,
+        3642
+      ],
+      [
+        14,
+        15227
+      ],
+      [
+        13,
+        8480
+      ],
+      [
+        23,
+        5298
+      ],
+      [
+        17,
+        6201
+      ],
+      [
+        16,
+        16736
+      ],
+      [
+        19,
+        15268
+      ],
+      [
+        20,
+        11735
+      ],
+      [
+        14,
+        10204
+      ],
+      [
+        12,
+        8109
+      ],
+      [
+        16,
+        4570
+      ],
+      [
+        12,
+        12574
+      ],
+      [
+        15,
+        10782
+      ],
+      [
+        16,
+        3147
+      ],
+      [
+        17,
+        14360
+      ],
+      [
+        15,
+        10943
+      ],
+      [
+        14,
+        298
+      ],
+      [
+        15,
+        12746
+      ],
+      [
+        15,
+        13037
+      ],
+      [
+        17,
+        1105
+      ],
+      [
+        13,
+        15954
+      ],
+      [
+        21,
+        15935
+      ],
+      [
+        19,
+        19
+      ],
+      [
+        16,
+        12676
+      ],
+      [
+        20,
+        4058
+      ],
+      [
+        19,
+        17493
+      ],
+      [
+        14,
+        12430
+      ],
+      [
+        21,
+        14816
+      ],
+      [
+        14,
+        14576
+      ]
+    ],
+    "anchors_used": [
+      [
+        18,
+        10220
+      ],
+      [
+        12,
+        11452
+      ],
+      [
+        20,
+        2163
+      ],
+      [
+        19,
+        13744
+      ],
+      [
+        17,
+        16475
+      ],
+      [
+        12,
+        606
+      ],
+      [
+        20,
+        13290
+      ],
+      [
+        14,
+        903
+      ],
+      [
+        20,
+        9558
+      ],
+      [
+        12,
+        4149
+      ],
+      [
+        12,
+        16751
+      ],
+      [
+        15,
+        7484
+      ],
+      [
+        22,
+        9786
+      ],
+      [
+        15,
+        640
+      ],
+      [
+        15,
+        3642
+      ],
+      [
+        14,
+        15227
+      ],
+      [
+        13,
+        8480
+      ],
+      [
+        23,
+        5298
+      ],
+      [
+        17,
+        6201
+      ],
+      [
+        16,
+        16736
+      ],
+      [
+        19,
+        15268
+      ],
+      [
+        20,
+        11735
+      ],
+      [
+        14,
+        10204
+      ],
+      [
+        12,
+        8109
+      ],
+      [
+        16,
+        4570
+      ],
+      [
+        12,
+        12574
+      ],
+      [
+        15,
+        10782
+      ],
+      [
+        16,
+        3147
+      ],
+      [
+        17,
+        14360
+      ],
+      [
+        15,
+        10943
+      ],
+      [
+        14,
+        298
+      ],
+      [
+        15,
+        12746
+      ],
+      [
+        15,
+        13037
+      ],
+      [
+        17,
+        1105
+      ],
+      [
+        13,
+        15954
+      ],
+      [
+        21,
+        15935
+      ],
+      [
+        19,
+        19
+      ],
+      [
+        16,
+        12676
+      ],
+      [
+        20,
+        4058
+      ],
+      [
+        19,
+        17493
+      ],
+      [
+        14,
+        12430
+      ],
+      [
+        21,
+        14816
+      ],
+      [
+        14,
+        14576
+      ]
+    ],
+    "pubmedqa_format": "binary_yes_no",
+    "clustering_features": "z-scored relative drops (drop / baseline_margin)"
+  },
+  "dataset_baselines": {
+    "medqa": {
+      "mean": 6.397031307220459,
+      "std": 3.2838711738586426,
+      "frac_neg": 0.0,
+      "n": 400
+    },
+    "medmcqa": {
+      "mean": 5.094130992889404,
+      "std": 2.658240556716919,
+      "frac_neg": 0.0,
+      "n": 400
+    },
+    "pubmedqa": {
+      "mean": 10.62637710571289,
+      "std": 6.377971172332764,
+      "frac_neg": 0.0024999999441206455,
+      "n": 400
+    }
+  },
+  "anchors": [
+    {
+      "layer": 18,
+      "column": 10220,
+      "drop_medqa": 0.6392382979393005,
+      "drop_medmcqa": 0.29872071743011475,
+      "drop_pubmedqa": 0.032011717557907104,
+      "rel_drop_medqa": 0.09992733617198017,
+      "rel_drop_medmcqa": 0.05864017196398783,
+      "rel_drop_pubmedqa": 0.0030124770878587727,
+      "cluster": 2
+    },
+    {
+      "layer": 12,
+      "column": 11452,
+      "drop_medqa": 0.14625488221645355,
+      "drop_medmcqa": 0.1718408167362213,
+      "drop_pubmedqa": -0.0069824219681322575,
+      "rel_drop_medqa": 0.022862930505181785,
+      "rel_drop_medmcqa": 0.03373309735774045,
+      "rel_drop_pubmedqa": -0.0006570839617933763,
+      "cluster": 0
+    },
+    {
+      "layer": 20,
+      "column": 2163,
+      "drop_medqa": 0.16468261182308197,
+      "drop_medmcqa": 0.26402342319488525,
+      "drop_pubmedqa": 0.06553710997104645,
+      "rel_drop_medqa": 0.02574359947827696,
+      "rel_drop_medmcqa": 0.05182894267214956,
+      "rel_drop_pubmedqa": 0.0061673992292079274,
+      "cluster": 0
+    },
+    {
+      "layer": 19,
+      "column": 13744,
+      "drop_medqa": 0.14708007872104645,
+      "drop_medmcqa": -0.0294189453125,
+      "drop_pubmedqa": -0.008974608965218067,
+      "rel_drop_medqa": 0.02299192729524931,
+      "rel_drop_medmcqa": -0.005775066513516077,
+      "rel_drop_pubmedqa": -0.0008445596157502438,
+      "cluster": 0
+    },
+    {
+      "layer": 17,
+      "column": 16475,
+      "drop_medqa": 0.12990234792232513,
+      "drop_medmcqa": -0.05562499910593033,
+      "drop_pubmedqa": -0.026669921353459358,
+      "rel_drop_medqa": 0.020306661275160825,
+      "rel_drop_medmcqa": -0.010919428492037989,
+      "rel_drop_pubmedqa": -0.0025097849519307228,
+      "cluster": 0
+    },
+    {
+      "layer": 12,
+      "column": 606,
+      "drop_medqa": 0.10116210579872131,
+      "drop_medmcqa": 0.08204101771116257,
+      "drop_pubmedqa": 0.010996093973517418,
+      "rel_drop_medqa": 0.015813914445680075,
+      "rel_drop_medmcqa": 0.01610500747343929,
+      "rel_drop_pubmedqa": 0.0010347923722381133,
+      "cluster": 0
+    },
+    {
+      "layer": 20,
+      "column": 13290,
+      "drop_medqa": 0.11274413764476776,
+      "drop_medmcqa": 0.04044921696186066,
+      "drop_pubmedqa": 0.009121093899011612,
+      "rel_drop_medqa": 0.017624446751966207,
+      "rel_drop_medmcqa": 0.00794035666109123,
+      "rel_drop_pubmedqa": 0.0008583446463713379,
+      "cluster": 0
+    },
+    {
+      "layer": 14,
+      "column": 903,
+      "drop_medqa": 0.09148925542831421,
+      "drop_medmcqa": 0.02587890625,
+      "drop_pubmedqa": -0.021513672545552254,
+      "rel_drop_medqa": 0.014301830182548651,
+      "rel_drop_medmcqa": 0.0050801414973668385,
+      "rel_drop_pubmedqa": -0.0020245538372608853,
+      "cluster": 0
+    },
+    {
+      "layer": 20,
+      "column": 9558,
+      "drop_medqa": 0.12485840171575546,
+      "drop_medmcqa": 0.020708007737994194,
+      "drop_pubmedqa": 0.016767578199505806,
+      "rel_drop_medqa": 0.019518178936349,
+      "rel_drop_medmcqa": 0.004065071700531313,
+      "rel_drop_pubmedqa": 0.0015779204928170034,
+      "cluster": 0
+    },
+    {
+      "layer": 12,
+      "column": 4149,
+      "drop_medqa": 0.07215332239866257,
+      "drop_medmcqa": 0.0970751941204071,
+      "drop_pubmedqa": 0.35182616114616394,
+      "rel_drop_medqa": 0.011279188569426203,
+      "rel_drop_medmcqa": 0.019056281484694567,
+      "rel_drop_pubmedqa": 0.03310875923620452,
+      "cluster": 1
+    },
+    {
+      "layer": 12,
+      "column": 16751,
+      "drop_medqa": 0.09382812678813934,
+      "drop_medmcqa": -0.0032421874348074198,
+      "drop_pubmedqa": -0.013847656548023224,
+      "rel_drop_medqa": 0.014667448427559458,
+      "rel_drop_medmcqa": -0.0006364554502687499,
+      "rel_drop_pubmedqa": -0.0013031399516753954,
+      "cluster": 0
+    },
+    {
+      "layer": 15,
+      "column": 7484,
+      "drop_medqa": 0.07483398169279099,
+      "drop_medmcqa": -0.028574218973517418,
+      "drop_pubmedqa": -0.0014160156715661287,
+      "rel_drop_medqa": 0.011698235962722951,
+      "rel_drop_medmcqa": -0.005609243070781352,
+      "rel_drop_pubmedqa": -0.0001332547920593613,
+      "cluster": 0
+    },
+    {
+      "layer": 22,
+      "column": 9786,
+      "drop_medqa": 0.0884082019329071,
+      "drop_medmcqa": 0.00974121131002903,
+      "drop_pubmedqa": -0.003974609542638063,
+      "rel_drop_medqa": 0.013820192162123542,
+      "rel_drop_medmcqa": 0.0019122420141190343,
+      "rel_drop_pubmedqa": -0.00037403241980761787,
+      "cluster": 0
+    },
+    {
+      "layer": 15,
+      "column": 640,
+      "drop_medqa": 0.09362304955720901,
+      "drop_medmcqa": 0.07662109285593033,
+      "drop_pubmedqa": -0.01132812537252903,
+      "rel_drop_medqa": 0.014635390239771812,
+      "rel_drop_medmcqa": 0.015041052725750707,
+      "rel_drop_pubmedqa": -0.0010660383364748903,
+      "cluster": 0
+    },
+    {
+      "layer": 15,
+      "column": 3642,
+      "drop_medqa": 0.07776366919279099,
+      "drop_medmcqa": 0.05708496272563934,
+      "drop_pubmedqa": 0.0023535157088190317,
+      "rel_drop_medqa": 0.012156212070592426,
+      "rel_drop_medmcqa": 0.011206025680399828,
+      "rel_drop_pubmedqa": 0.00022147865499274897,
+      "cluster": 0
+    },
+    {
+      "layer": 14,
+      "column": 15227,
+      "drop_medqa": 0.07680664211511612,
+      "drop_medmcqa": 0.04186035320162773,
+      "drop_pubmedqa": -0.028867186978459358,
+      "rel_drop_medqa": 0.012006607194250073,
+      "rel_drop_medmcqa": 0.008217368823074656,
+      "rel_drop_pubmedqa": -0.002716559622464363,
+      "cluster": 0
+    },
+    {
+      "layer": 13,
+      "column": 8480,
+      "drop_medqa": 0.0742480456829071,
+      "drop_medmcqa": 0.031074218451976776,
+      "drop_pubmedqa": 0.028398437425494194,
+      "rel_drop_medqa": 0.011606640974087751,
+      "rel_drop_medmcqa": 0.0061000038073915725,
+      "rel_drop_pubmedqa": 0.002672447734818934,
+      "cluster": 0
+    },
+    {
+      "layer": 23,
+      "column": 5298,
+      "drop_medqa": 0.08287109434604645,
+      "drop_medmcqa": 0.0003369140613358468,
+      "drop_pubmedqa": 0.017441406846046448,
+      "rel_drop_medqa": 0.012954617597776668,
+      "rel_drop_medmcqa": 6.613769096360599e-05,
+      "rel_drop_pubmedqa": 0.0016413314408604699,
+      "cluster": 0
+    },
+    {
+      "layer": 17,
+      "column": 6201,
+      "drop_medqa": 0.056083984673023224,
+      "drop_medmcqa": 0.05732421949505806,
+      "drop_pubmedqa": -0.013242187909781933,
+      "rel_drop_medqa": 0.008767189338235705,
+      "rel_drop_medmcqa": 0.011252992821557502,
+      "rel_drop_pubmedqa": -0.0012461620529787849,
+      "cluster": 0
+    },
+    {
+      "layer": 16,
+      "column": 16736,
+      "drop_medqa": 0.07561523467302322,
+      "drop_medmcqa": 0.05741211026906967,
+      "drop_pubmedqa": 0.010371093638241291,
+      "rel_drop_medqa": 0.011820363390698866,
+      "rel_drop_medmcqa": 0.011270246161554903,
+      "rel_drop_pubmedqa": 0.0009759764344016781,
+      "cluster": 0
+    },
+    {
+      "layer": 19,
+      "column": 15268,
+      "drop_medqa": 0.056621093302965164,
+      "drop_medmcqa": 0.05204101651906967,
+      "drop_pubmedqa": 0.011562500149011612,
+      "rel_drop_medqa": 0.008851151508209094,
+      "rel_drop_medmcqa": 0.01021587717153537,
+      "rel_drop_pubmedqa": 0.0010880942802976047,
+      "cluster": 0
+    },
+    {
+      "layer": 20,
+      "column": 11735,
+      "drop_medqa": 0.08454101532697678,
+      "drop_medmcqa": 0.058247070759534836,
+      "drop_pubmedqa": 0.0017773438012227416,
+      "rel_drop_medqa": 0.013215663839499053,
+      "rel_drop_medmcqa": 0.01143415252588488,
+      "rel_drop_pubmedqa": 0.00016725773831866145,
+      "cluster": 0
+    },
+    {
+      "layer": 14,
+      "column": 10204,
+      "drop_medqa": 0.06298828125,
+      "drop_medmcqa": 0.029775390401482582,
+      "drop_pubmedqa": -0.04548828303813934,
+      "rel_drop_medqa": 0.009846486319193694,
+      "rel_drop_medmcqa": 0.005845038229885389,
+      "rel_drop_pubmedqa": -0.004280695347587862,
+      "cluster": 0
+    },
+    {
+      "layer": 12,
+      "column": 8109,
+      "drop_medqa": 0.04276367276906967,
+      "drop_medmcqa": -0.018173828721046448,
+      "drop_pubmedqa": 1.9531249563442543e-05,
+      "rel_drop_medqa": 0.006684924727631307,
+      "rel_drop_medmcqa": -0.0035676013723271384,
+      "rel_drop_pubmedqa": 1.837997030327699e-06,
+      "cluster": 0
+    },
+    {
+      "layer": 16,
+      "column": 4570,
+      "drop_medqa": 0.05061523616313934,
+      "drop_medmcqa": 0.030209960415959358,
+      "drop_pubmedqa": 0.012763671576976776,
+      "rel_drop_medqa": 0.007912300836484714,
+      "rel_drop_medmcqa": 0.005930346207847354,
+      "rel_drop_pubmedqa": 0.0012011310581209137,
+      "cluster": 0
+    },
+    {
+      "layer": 12,
+      "column": 12574,
+      "drop_medqa": 0.062382813543081284,
+      "drop_medmcqa": 0.02518554776906967,
+      "drop_pubmedqa": 0.00815429724752903,
+      "rel_drop_medqa": 0.009751838086624422,
+      "rel_drop_medmcqa": 0.004944032221437707,
+      "rel_drop_pubmedqa": 0.0007673638123707434,
+      "cluster": 0
+    },
+    {
+      "layer": 15,
+      "column": 10782,
+      "drop_medqa": 0.051884766668081284,
+      "drop_medmcqa": 0.06228027492761612,
+      "drop_pubmedqa": -0.007763671688735485,
+      "rel_drop_medqa": 0.008110757033425472,
+      "rel_drop_medmcqa": 0.012225887990424563,
+      "rel_drop_pubmedqa": -0.0007306038183570227,
+      "cluster": 0
+    },
+    {
+      "layer": 16,
+      "column": 3147,
+      "drop_medqa": 0.062187500298023224,
+      "drop_medmcqa": 0.004311523400247097,
+      "drop_pubmedqa": -0.00033203125349245965,
+      "rel_drop_medqa": 0.009721306229630442,
+      "rel_drop_medmcqa": 0.0008463707364936821,
+      "rel_drop_pubmedqa": -3.1245950542631785e-05,
+      "cluster": 0
+    },
+    {
+      "layer": 17,
+      "column": 14360,
+      "drop_medqa": 0.044365234673023224,
+      "drop_medmcqa": 0.013950195163488388,
+      "drop_pubmedqa": -0.006298827938735485,
+      "rel_drop_medqa": 0.0069352849067578085,
+      "rel_drop_medmcqa": 0.0027384837930081968,
+      "rel_drop_pubmedqa": -0.0005927540380012625,
+      "cluster": 0
+    },
+    {
+      "layer": 15,
+      "column": 10943,
+      "drop_medqa": 0.032490234822034836,
+      "drop_medmcqa": 0.06313476711511612,
+      "drop_pubmedqa": 0.03915039077401161,
+      "rel_drop_medqa": 0.005078955106154076,
+      "rel_drop_medmcqa": 0.012393628511564033,
+      "rel_drop_pubmedqa": 0.0036842651436644206,
+      "cluster": 0
+    },
+    {
+      "layer": 14,
+      "column": 298,
+      "drop_medqa": 0.04301757737994194,
+      "drop_medmcqa": 0.06345703452825546,
+      "drop_pubmedqa": 0.014277343638241291,
+      "rel_drop_medqa": 0.006724615734080765,
+      "rel_drop_medmcqa": 0.01245689100198471,
+      "rel_drop_pubmedqa": 0.0013435758486837052,
+      "cluster": 0
+    },
+    {
+      "layer": 15,
+      "column": 12746,
+      "drop_medqa": 0.03472656384110451,
+      "drop_medmcqa": 0.007988281548023224,
+      "drop_pubmedqa": -0.009511718526482582,
+      "rel_drop_medqa": 0.005428543674924325,
+      "rel_drop_medmcqa": 0.0015681343018413923,
+      "rel_drop_pubmedqa": -0.0008951045527425286,
+      "cluster": 0
+    },
+    {
+      "layer": 15,
+      "column": 13037,
+      "drop_medqa": 0.03799804672598839,
+      "drop_medmcqa": 0.041010741144418716,
+      "drop_pubmedqa": -0.0007031250279396772,
+      "rel_drop_medqa": 0.00593995009577321,
+      "rel_drop_medmcqa": 0.00805058629266958,
+      "rel_drop_pubmedqa": -6.616789720004076e-05,
+      "cluster": 0
+    },
+    {
+      "layer": 17,
+      "column": 1105,
+      "drop_medqa": 0.04007812589406967,
+      "drop_medmcqa": 0.0696728527545929,
+      "drop_pubmedqa": 0.019423827528953552,
+      "rel_drop_medqa": 0.006265113295417623,
+      "rel_drop_medmcqa": 0.01367708306909365,
+      "rel_drop_pubmedqa": 0.00182788803142616,
+      "cluster": 0
+    },
+    {
+      "layer": 13,
+      "column": 15954,
+      "drop_medqa": 0.06290039420127869,
+      "drop_medmcqa": 0.04041992127895355,
+      "drop_pubmedqa": 0.02583984285593033,
+      "rel_drop_medqa": 0.009832747595010476,
+      "rel_drop_medmcqa": 0.007934605791522309,
+      "rel_drop_pubmedqa": 0.00243167004133878,
+      "cluster": 0
+    },
+    {
+      "layer": 21,
+      "column": 15935,
+      "drop_medqa": 0.03143554553389549,
+      "drop_medmcqa": 0.013764648698270321,
+      "drop_pubmedqa": -0.0022558593191206455,
+      "rel_drop_medqa": 0.004914083427794633,
+      "rel_drop_medmcqa": 0.0027020602174313104,
+      "rel_drop_pubmedqa": -0.00021228865648931878,
+      "cluster": 0
+    },
+    {
+      "layer": 19,
+      "column": 19,
+      "drop_medqa": 0.043681640177965164,
+      "drop_medmcqa": -0.0009667968843132257,
+      "drop_pubmedqa": -0.013710937462747097,
+      "rel_drop_medqa": 0.006828423698452251,
+      "rel_drop_medmcqa": -0.00018978642003174246,
+      "rel_drop_pubmedqa": -0.0012902739406242137,
+      "cluster": 0
+    },
+    {
+      "layer": 16,
+      "column": 12676,
+      "drop_medqa": 0.04287109524011612,
+      "drop_medmcqa": 0.008115234784781933,
+      "drop_pubmedqa": -0.008867187425494194,
+      "rel_drop_medqa": 0.006701717278095333,
+      "rel_drop_medmcqa": 0.0015930557726351183,
+      "rel_drop_pubmedqa": -0.000834450663408799,
+      "cluster": 0
+    },
+    {
+      "layer": 20,
+      "column": 4058,
+      "drop_medqa": 0.03661132976412773,
+      "drop_medmcqa": -0.0011865234700962901,
+      "drop_pubmedqa": -0.002607421949505806,
+      "rel_drop_medqa": 0.005723175017574759,
+      "rel_drop_medmcqa": -0.00023291970146674436,
+      "rel_drop_pubmedqa": -0.00024537261604465544,
+      "cluster": 0
+    },
+    {
+      "layer": 19,
+      "column": 17493,
+      "drop_medqa": 0.036259766668081284,
+      "drop_medmcqa": -0.014716796576976776,
+      "drop_pubmedqa": -0.0022558593191206455,
+      "rel_drop_medqa": 0.005668217791454944,
+      "rel_drop_medmcqa": -0.0028889709741502685,
+      "rel_drop_pubmedqa": -0.00021228865648931878,
+      "cluster": 0
+    },
+    {
+      "layer": 14,
+      "column": 12430,
+      "drop_medqa": 0.044609375298023224,
+      "drop_medmcqa": 0.018330078572034836,
+      "drop_pubmedqa": -0.009384765289723873,
+      "rel_drop_medqa": 0.006973449582413598,
+      "rel_drop_medmcqa": 0.003598273895512445,
+      "rel_drop_pubmedqa": -0.0008831575612612591,
+      "cluster": 0
+    },
+    {
+      "layer": 21,
+      "column": 14816,
+      "drop_medqa": 0.032890625298023224,
+      "drop_medmcqa": 0.0006396484095603228,
+      "drop_pubmedqa": 0.019785156473517418,
+      "rel_drop_medqa": 0.005141545150935701,
+      "rel_drop_medmcqa": 0.00012556575605401002,
+      "rel_drop_pubmedqa": 0.001861891054372674,
+      "cluster": 0
+    },
+    {
+      "layer": 14,
+      "column": 14576,
+      "drop_medqa": 0.03725586086511612,
+      "drop_medmcqa": 0.0011767578544095159,
+      "drop_pubmedqa": 0.0016015624860301614,
+      "rel_drop_medqa": 0.005823929738012173,
+      "rel_drop_medmcqa": 0.0002310026687676627,
+      "rel_drop_pubmedqa": 0.00015071575854099312,
+      "cluster": 0
+    }
+  ],
+  "cluster_metrics": {
+    "inertia": 36.944480895996094,
+    "silhouette_score": 0.7897838950157166,
+    "n_iter": 2,
+    "k_chosen": 3
+  },
+  "cluster_summary": {
+    "0": {
+      "count": 41,
+      "mean_drop_medqa": 0.0704251621372816,
+      "mean_drop_medmcqa": 0.03385861269581677,
+      "mean_drop_pubmedqa": 0.001691358593855445,
+      "mean_rel_medqa": 0.011009038425981998,
+      "mean_rel_medmcqa": 0.006646592635661364,
+      "mean_rel_pubmedqa": 0.00015916605480015278,
+      "std_drop_medqa": 0.03451702360745399,
+      "std_drop_medmcqa": 0.05296732942152408,
+      "std_drop_pubmedqa": 0.018941864043422556
+    },
+    "1": {
+      "count": 1,
+      "mean_drop_medqa": 0.07215332239866257,
+      "mean_drop_medmcqa": 0.0970751941204071,
+      "mean_drop_pubmedqa": 0.35182616114616394,
+      "mean_rel_medqa": 0.01127918902784586,
+      "mean_rel_medmcqa": 0.019056281074881554,
+      "mean_rel_pubmedqa": 0.03310875967144966,
+      "std_drop_medqa": 0.0,
+      "std_drop_medmcqa": 0.0,
+      "std_drop_pubmedqa": 0.0
+    },
+    "2": {
+      "count": 1,
+      "mean_drop_medqa": 0.6392382979393005,
+      "mean_drop_medmcqa": 0.29872071743011475,
+      "mean_drop_pubmedqa": 0.032011717557907104,
+      "mean_rel_medqa": 0.09992733597755432,
+      "mean_rel_medmcqa": 0.058640170842409134,
+      "mean_rel_pubmedqa": 0.0030124771874397993,
+      "std_drop_medqa": 0.0,
+      "std_drop_medmcqa": 0.0,
+      "std_drop_pubmedqa": 0.0
+    }
+  }
+}

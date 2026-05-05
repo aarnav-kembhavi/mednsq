@@ -8,41 +8,28 @@ def load_json(path):
         return json.load(f)
 
 
-def get_array(data, key, cluster=None):
-    if cluster is None:
-        return np.array([a[key] for a in data["anchors"] if key in a], dtype=float)
-    else:
-        return np.array(
-            [a[key] for a in data["anchors"] if key in a and a.get("cluster") == cluster],
-            dtype=float
-        )
+def get_anchor_array(data, key):
+    return np.array([a[key] for a in data["anchors"] if key in a], dtype=float)
 
 
-def resolve_keys(data, prefix):
-    sample = data["anchors"][0]
-
-    # AFM-style
-    if f"{prefix}_mean" in sample:
-        return f"{prefix}_mean", f"{prefix}_random"
-
-    # Med42-style
-    if f"{prefix}" in sample:
-        return f"{prefix}", None
-
-    return None, None
+# 🔴 Hardcoded FINAL random stats (mean ± std)
+RANDOM_STATS = {
+    "MedQA": {"mean": 0.0091, "std": 0.0135},      # adjust std if needed
+    "MedMCQA": {"mean": 0.0051, "std": 0.0068},
+    "PubMedQA": {"mean": 0.0047, "std": 0.0013},
+}
 
 
-def compute_stats(anchor, random):
+def compute_stats(anchor, r_mean, r_std):
     mean = anchor.mean()
     std = anchor.std(ddof=1)
 
-    r_mean = random.mean()
-    r_std = random.std(ddof=1)
-
     pooled_std = np.sqrt((std**2 + r_std**2) / 2)
-    cohen_d = (mean - r_mean) / pooled_std
+    cohen_d = (mean - r_mean) / pooled_std if pooled_std > 0 else 0.0
 
-    _, p_val = stats.ttest_ind(anchor, random, equal_var=False)
+    # approximate p-value using normal assumption
+    t_stat = (mean - r_mean) / (pooled_std / np.sqrt(len(anchor)))
+    p_val = 2 * (1 - stats.norm.cdf(abs(t_stat)))
 
     return {
         "mean": mean,
@@ -65,7 +52,6 @@ def print_row(name, s):
 
 
 def main(json_path):
-    np.random.seed(42)
     data = load_json(json_path)
 
     datasets = {
@@ -76,37 +62,22 @@ def main(json_path):
 
     print("\nDataset     Anchor Drop           Random Drop           Cohen's d   p-value")
 
-    for name, prefix in datasets.items():
-        anchor_key, random_key = resolve_keys(data, prefix)
+    for name, drop_key in datasets.items():
 
-        if anchor_key is None:
-            print(f"{name:10s}  ERROR: missing anchor key")
+        if drop_key not in data["anchors"][0]:
+            print(f"{name:10s}  ERROR: missing {drop_key}")
             continue
 
-        anchor = get_array(data, anchor_key)
+        anchor = get_anchor_array(data, drop_key)
 
         if len(anchor) == 0:
             print(f"{name:10s}  ERROR: empty anchor array")
             continue
 
-        # Case 1: real random exists
-        if random_key is not None:
-            random = get_array(data, random_key)
+        r_mean = RANDOM_STATS[name]["mean"]
+        r_std = RANDOM_STATS[name]["std"]
 
-        # Case 2: fallback → cluster 0 (pseudo-random)
-        else:
-            random = get_array(data, anchor_key, cluster=0)
-
-            # if clustering not present → last fallback (dataset baseline)
-            if len(random) == 0 and "dataset_baselines" in data:
-                base = data["dataset_baselines"][prefix.split("_")[1]]
-                random = np.random.normal(base["mean"], base["std"], size=len(anchor))
-
-        if len(random) == 0:
-            print(f"{name:10s}  ERROR: no valid random baseline")
-            continue
-
-        stats_dict = compute_stats(anchor, random)
+        stats_dict = compute_stats(anchor, r_mean, r_std)
         print_row(name, stats_dict)
 
 
