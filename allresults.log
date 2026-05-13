@@ -1,35 +1,0 @@
-============================================================
-ALPHAMED-8B ANCHOR VS RANDOM (MedNSQ)
-============================================================
-Config hash: 296d1794
-Model path: /workspace/alphamed
-Anchor file: anchors_alphamed_8b_instruct_rl.json
-Random trials: 500
-============================================================
-
-[1/4] Loading model (local only)...
-Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights:   4%|▍         | 13/291 [00:00<00:02, 98.56it/s]Loading weights:   8%|▊         | 24/291 [00:00<00:02, 103.32it/s]Loading weights:  14%|█▎        | 40/291 [00:00<00:02, 106.37it/s]Loading weights:  19%|█▊        | 54/291 [00:00<00:02, 109.96it/s]Loading weights:  23%|██▎       | 67/291 [00:00<00:02, 108.54it/s]Loading weights:  28%|██▊       | 81/291 [00:00<00:01, 110.26it/s]Loading weights:  32%|███▏      | 94/291 [00:00<00:01, 113.62it/s]Loading weights:  36%|███▋      | 106/291 [00:00<00:01, 110.72it/s]Loading weights:  41%|████      | 118/291 [00:01<00:01, 111.52it/s]Loading weights:  45%|████▍     | 130/291 [00:01<00:01, 112.29it/s]Loading weights:  49%|████▉     | 142/291 [00:01<00:01, 110.04it/s]Loading weights:  54%|█████▍    | 157/291 [00:01<00:01, 104.37it/s]Loading weights:  59%|█████▉    | 171/291 [00:01<00:01, 111.46it/s]Loading weights:  63%|██████▎   | 184/291 [00:01<00:00, 109.98it/s]Loading weights:  67%|██████▋   | 196/291 [00:01<00:00, 108.97it/s]Loading weights:  71%|███████   | 207/291 [00:01<00:00, 105.93it/s]Loading weights:  76%|███████▌  | 220/291 [00:02<00:00, 107.99it/s]Loading weights:  79%|███████▉  | 231/291 [00:02<00:00, 107.66it/s]Loading weights:  84%|████████▎ | 243/291 [00:02<00:00, 110.68it/s]Loading weights:  88%|████████▊ | 256/291 [00:02<00:00, 114.30it/s]Loading weights:  92%|█████████▏| 268/291 [00:02<00:00, 109.51it/s]Loading weights:  96%|█████████▌| 280/291 [00:02<00:00, 107.00it/s]Loading weights: 100%|██████████| 291/291 [00:02<00:00, 110.31it/s]
-[Probe] hidden=4096 intermediate=14336 layers=32 heads=32
-
-[2/4] Preparing dataset pairs...
-MedQA cache ignored (0 pairs, need 400); rebuilding...
-Building MedQA pairs (target n=400)...
-Loading MedMCQA from cache: alphamed_medmcqa_pairs.txt
-Loading PubMedQA from cache: alphamed_pubmedqa_pairs.txt
-  MedQA: 400 pairs
-  MedMCQA: 400 pairs
-  PubMedQA: 400 pairs
-
-[3/4] Loading anchors from JSON...
-  Using 64 anchors (JSON order preserved)
-
-[4/4] Anchor vs random (group crush)...
-  medqa...
-    random trials 100/500
-    random trials 200/500
-    random trials 300/500
-    random trials 400/500
-    random trials 500/500
-medqa: anchor=+4.1313 ± 3.1299, random=-0.0059 ± 0.0591, d=+34.47, p<1e-300
-  medmcqa...
-    random trials 100/500
