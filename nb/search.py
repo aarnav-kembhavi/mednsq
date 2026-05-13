@@ -39,7 +39,7 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "che111/AlphaMed-8B-instruct-rl"
+    model_name: str = "/workspace/alphamed"
     # AlphaMed-8B: 32 layers (Llama 3.1 8B class). Middle-half sweep; tune if layer count changes.
     middle_layers: Tuple[int, ...] = tuple(range(8, 24))
     seed: int = 42
@@ -386,7 +386,12 @@ def main():
     log(f"Config: {asdict(CFG)}")
 
     log("Loading tokenizer + model (bf16, device_map=auto, trust_remote_code=True)...")
-    tokenizer = AutoTokenizer.from_pretrained(CFG.model_name, trust_remote_code=True, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        CFG.model_name,
+        trust_remote_code=True,
+        use_fast=True,
+        local_files_only=True,
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     pad_id = tokenizer.pad_token_id
@@ -396,6 +401,7 @@ def main():
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
+        local_files_only=True,
     )
     model.eval()
     probe = MedNSQProbe(model)
