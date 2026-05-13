@@ -43,7 +43,7 @@ from mednsq_probe import MedNSQProbe
 class Config:
     model_name: str = "/workspace/openbiollm"
     # OpenBioLLM-8B (~32-layer Llama-family). Middle-half sweep; tune if layer count changes.
-    middle_layers: Tuple[int, ...] = tuple(range(8, 24))
+    middle_layers: Tuple[int, ...] = tuple(range(12, 27))
     seed: int = 42
 
     # Calibration / validation / test sizes
