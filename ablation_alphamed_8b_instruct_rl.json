@@ -1,0 +1,403 @@
+{
+  "metadata": {
+    "timestamp": "2026-05-13T19:26:30.769094",
+    "model_name": "/workspace/alphamed",
+    "config": {
+      "model_name": "/workspace/alphamed",
+      "middle_layers": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "seed": 42,
+      "calib_size": 400,
+      "val_size": 200,
+      "test_size": 300,
+      "stage1_topk": 64,
+      "stage1_eval_pairs": 80,
+      "stage2_eval_pairs": 400,
+      "random_baseline_cols": 32,
+      "z_threshold": 4.0,
+      "max_anchors": 64,
+      "k_values": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64
+      ],
+      "n_random_trials": 30,
+      "ablation_eval_pairs": 200,
+      "ablation_test_size": 300,
+      "discovery_file": "anchors_alphamed_8b_instruct_rl.json",
+      "ablation_file": "ablation_alphamed_8b_instruct_rl.json",
+      "log_file": "experiment_alphamed_8b_instruct_rl.log",
+      "intervention_type": "column_crush_1bit"
+    },
+    "prompt_template_hash": "5136cb018ebf2ba2",
+    "intervention_type": "column_crush_1bit",
+    "anchors_used": [
+      [
+        9,
+        4255
+      ],
+      [
+        17,
+        7522
+      ],
+      [
+        13,
+        2158
+      ],
+      [
+        15,
+        2808
+      ],
+      [
+        13,
+        2590
+      ],
+      [
+        14,
+        318
+      ],
+      [
+        14,
+        8
+      ],
+      [
+        20,
+        4299
+      ],
+      [
+        20,
+        2786
+      ],
+      [
+        16,
+        10414
+      ],
+      [
+        14,
+        9626
+      ],
+      [
+        10,
+        11570
+      ],
+      [
+        16,
+        11807
+      ],
+      [
+        11,
+        5290
+      ],
+      [
+        11,
+        2582
+      ],
+      [
+        20,
+        7107
+      ],
+      [
+        18,
+        8527
+      ],
+      [
+        15,
+        8206
+      ],
+      [
+        11,
+        4146
+      ],
+      [
+        9,
+        12179
+      ],
+      [
+        21,
+        11296
+      ],
+      [
+        13,
+        4216
+      ],
+      [
+        8,
+        51
+      ],
+      [
+        9,
+        4892
+      ],
+      [
+        12,
+        4484
+      ],
+      [
+        10,
+        13730
+      ],
+      [
+        15,
+        7021
+      ],
+      [
+        9,
+        858
+      ],
+      [
+        15,
+        9394
+      ],
+      [
+        14,
+        13182
+      ],
+      [
+        15,
+        13733
+      ],
+      [
+        16,
+        11281
+      ],
+      [
+        21,
+        11935
+      ],
+      [
+        14,
+        7120
+      ],
+      [
+        19,
+        4592
+      ],
+      [
+        10,
+        14115
+      ],
+      [
+        9,
+        6383
+      ],
+      [
+        10,
+        1369
+      ],
+      [
+        10,
+        2418
+      ],
+      [
+        15,
+        9683
+      ],
+      [
+        12,
+        7652
+      ],
+      [
+        18,
+        4636
+      ],
+      [
+        12,
+        3723
+      ],
+      [
+        12,
+        13834
+      ],
+      [
+        17,
+        13564
+      ],
+      [
+        18,
+        12797
+      ],
+      [
+        14,
+        12708
+      ],
+      [
+        18,
+        14296
+      ],
+      [
+        17,
+        9655
+      ],
+      [
+        21,
+        9427
+      ],
+      [
+        19,
+        594
+      ],
+      [
+        19,
+        1241
+      ],
+      [
+        23,
+        5765
+      ],
+      [
+        19,
+        289
+      ],
+      [
+        20,
+        5410
+      ],
+      [
+        21,
+        12445
+      ],
+      [
+        19,
+        1652
+      ],
+      [
+        19,
+        1021
+      ],
+      [
+        19,
+        2901
+      ],
+      [
+        21,
+        4020
+      ],
+      [
+        21,
+        222
+      ],
+      [
+        19,
+        7602
+      ],
+      [
+        19,
+        12748
+      ],
+      [
+        21,
+        4452
+      ]
+    ]
+  },
+  "results": {
+    "baseline_margin": 5.392734527587891,
+    "baseline_accuracy": 0.6366666666666667,
+    "per_k": {
+      "1": {
+        "K": 1,
+        "anchor_margin_drop": 0.7633204460144043,
+        "anchor_acc_drop": 0.030000000000000027,
+        "rand_margin_drop_mean": 0.006871223449707031,
+        "rand_margin_drop_std": 0.008767309828065202,
+        "rand_acc_drop_mean": -0.0006666666666666598,
+        "rand_acc_drop_std": 0.0013333333333333196,
+        "z_margin": 86.28055522090297,
+        "translation_rate": 0.03930197357694505,
+        "n_random_trials": 30
+      },
+      "2": {
+        "K": 2,
+        "anchor_margin_drop": 0.8868751525878906,
+        "anchor_acc_drop": 0.030000000000000027,
+        "rand_margin_drop_mean": 0.00593115488688151,
+        "rand_margin_drop_std": 0.0074017995815924605,
+        "rand_acc_drop_mean": -0.0016666666666666496,
+        "rand_acc_drop_std": 0.0016666666666666496,
+        "z_margin": 119.0173818969656,
+        "translation_rate": 0.03382663265788922,
+        "n_random_trials": 30
+      },
+      "4": {
+        "K": 4,
+        "anchor_margin_drop": 1.2741799354553223,
+        "anchor_acc_drop": 0.030000000000000027,
+        "rand_margin_drop_mean": 0.006151183446248373,
+        "rand_margin_drop_std": 0.01236267560866713,
+        "rand_acc_drop_mean": -0.0013333333333332975,
+        "rand_acc_drop_std": 0.0030550504633038962,
+        "z_margin": 102.56903654656514,
+        "translation_rate": 0.023544555337295957,
+        "n_random_trials": 30
+      },
+      "8": {
+        "K": 8,
+        "anchor_margin_drop": 1.6780469417572021,
+        "anchor_acc_drop": 0.040000000000000036,
+        "rand_margin_drop_mean": 0.007471545537312826,
+        "rand_margin_drop_std": 0.018475832580670516,
+        "rand_acc_drop_mean": -0.0009999999999999898,
+        "rand_acc_drop_std": 0.002134374745810928,
+        "z_margin": 90.41944306061853,
+        "translation_rate": 0.023837235422099215,
+        "n_random_trials": 30
+      },
+      "16": {
+        "K": 16,
+        "anchor_margin_drop": 2.5080862045288086,
+        "anchor_acc_drop": 0.053333333333333344,
+        "rand_margin_drop_mean": 0.010898605982462565,
+        "rand_margin_drop_std": 0.025670929895687672,
+        "rand_acc_drop_mean": -0.0013333333333333086,
+        "rand_acc_drop_std": 0.0026666666666666588,
+        "z_margin": 97.27682775517836,
+        "translation_rate": 0.021264553521737114,
+        "n_random_trials": 30
+      },
+      "32": {
+        "K": 32,
+        "anchor_margin_drop": 3.1980860233306885,
+        "anchor_acc_drop": 0.08666666666666667,
+        "rand_margin_drop_mean": 0.0019936243693033854,
+        "rand_margin_drop_std": 0.027557601856014705,
+        "rand_acc_drop_mean": -0.0029999999999999584,
+        "rand_acc_drop_std": 0.003480102169636835,
+        "z_margin": 115.97856939347986,
+        "translation_rate": 0.02709954204934317,
+        "n_random_trials": 30
+      },
+      "64": {
+        "K": 64,
+        "anchor_margin_drop": 3.9771485328674316,
+        "anchor_acc_drop": 0.14333333333333337,
+        "rand_margin_drop_mean": 0.02651057243347168,
+        "rand_margin_drop_std": 0.05221593498920298,
+        "rand_acc_drop_mean": -0.0019999999999999463,
+        "rand_acc_drop_std": 0.004521553322083505,
+        "z_margin": 75.65960859754348,
+        "translation_rate": 0.03603922059958705,
+        "n_random_trials": 30
+      }
+    }
+  }
+}
