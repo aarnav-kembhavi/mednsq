@@ -122,11 +122,13 @@ def save_pairs(path: str, pairs: List[Dict[str, Any]]) -> None:
         f.write("#" + json.dumps(metadata) + "\n")
 
         for p in pairs:
+            safe_ids = p.get("safe_input_ids", p["input_ids"])
+            safe_mask = p.get("safe_attention_mask", p["attention_mask"])
             row = {
                 "input_ids": p["input_ids"][0].tolist(),
                 "attention_mask": p["attention_mask"][0].tolist(),
-                "safe_input_ids": p["safe_input_ids"][0].tolist(),
-                "safe_attention_mask": p["safe_attention_mask"][0].tolist(),
+                "safe_input_ids": safe_ids[0].tolist(),
+                "safe_attention_mask": safe_mask[0].tolist(),
                 "pos_id": int(p["pos_id"]),
                 "neg_id": int(p["neg_id"]),
             }
@@ -142,11 +144,13 @@ def load_pairs(path: str) -> List[Dict[str, Any]]:
             if not line or line.startswith("#"):
                 continue
             row = json.loads(line)
+            sid = row.get("safe_input_ids", row["input_ids"])
+            sm = row.get("safe_attention_mask", row["attention_mask"])
             pairs.append({
                 "input_ids": torch.tensor([row["input_ids"]], dtype=torch.long),
                 "attention_mask": torch.tensor([row["attention_mask"]], dtype=torch.long),
-                "safe_input_ids": torch.tensor([row["safe_input_ids"]], dtype=torch.long),
-                "safe_attention_mask": torch.tensor([row["safe_attention_mask"]], dtype=torch.long),
+                "safe_input_ids": torch.tensor([sid], dtype=torch.long),
+                "safe_attention_mask": torch.tensor([sm], dtype=torch.long),
                 "pos_id": int(row["pos_id"]),
                 "neg_id": int(row["neg_id"]),
             })
