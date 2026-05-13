@@ -1,13 +1,15 @@
 
 """
-End-to-end EMS pipeline for che111/AlphaMed-8B-instruct-rl (Hugging Face).
+End-to-end EMS pipeline for Llama3-OpenBioLLM-8B (local weights at CFG.model_name).
 
 NOTE on architecture:
-  - AlphaMed-8B is LlamaForCausalLM (Meta-Llama-3.1-8B-Instruct derivative):
+  - Source model identity on Hugging Face: aaditya/Llama3-OpenBioLLM-8B (not loaded
+    remotely at runtime; execution uses the local snapshot under CFG.model_name).
+  - OpenBioLLM-8B is Llama-family / Llama-3 based (LlamaForCausalLM-style stack):
     SwiGLU MLP with gate_proj / up_proj / down_proj; MedNSQProbe targets
-    down_proj columns (same intervention semantics as other Llama-family runs).
-  - num_hidden_layers=32. Default `middle_layers` spans the middle half; if the
-    hub revision ever changes depth, edit `middle_layers` after checking the
+    down_proj columns (intervention semantics identical to other Llama-family runs).
+  - Expected depth is ~32 hidden layers. Default `middle_layers` spans the middle
+    half; if the checkpoint depth differs, edit `middle_layers` after checking the
     probe's `layers=N` line at startup.
 """
 
@@ -39,8 +41,8 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "/workspace/alphamed"
-    # AlphaMed-8B: 32 layers (Llama 3.1 8B class). Middle-half sweep; tune if layer count changes.
+    model_name: str = "/workspace/openbiollm"
+    # OpenBioLLM-8B (~32-layer Llama-family). Middle-half sweep; tune if layer count changes.
     middle_layers: Tuple[int, ...] = tuple(range(8, 24))
     seed: int = 42
 
@@ -64,9 +66,9 @@ class Config:
     ablation_test_size: int = 300
 
     # Output
-    discovery_file: str = "anchors_alphamed_8b_instruct_rl.json"
-    ablation_file: str = "ablation_alphamed_8b_instruct_rl.json"
-    log_file: str = "experiment_alphamed_8b_instruct_rl.log"
+    discovery_file: str = "anchors_openbiollm_8b.json"
+    ablation_file: str = "ablation_openbiollm_8b.json"
+    log_file: str = "experiment_openbiollm_8b.log"
 
     intervention_type: str = "column_crush_1bit"
 
@@ -288,7 +290,6 @@ def sample_random_neurons(
             attempts += 1
     return chosen
 
-
 def run_ablation(
     model,
     tokenizer,
@@ -385,7 +386,7 @@ def main():
     setup_seeds(CFG.seed)
     log(f"Config: {asdict(CFG)}")
 
-    log("Loading tokenizer + model (bf16, device_map=auto, trust_remote_code=True)...")
+    log("Loading tokenizer + model (OpenBioLLM-8B local snapshot, bf16, device_map=auto, trust_remote_code=True)...")
     tokenizer = AutoTokenizer.from_pretrained(
         CFG.model_name,
         trust_remote_code=True,
