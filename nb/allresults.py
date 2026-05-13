@@ -112,6 +112,8 @@ def get_letter_token_ids(tokenizer) -> Dict[str, int]:
 
 def save_pairs(path: str, pairs: List[Dict[str, Any]]) -> None:
     """Save adversarial pairs to cache with metadata."""
+    if not pairs:
+        return
     with open(path, "w", encoding="utf-8") as f:
         metadata = {
             "version": "1.0",
@@ -161,21 +163,71 @@ def load_pairs(path: str) -> List[Dict[str, Any]]:
 # DATASET LOADERS
 # ============================================================================
 
-def get_medqa_pairs(model, tokenizer, n_total: int) -> List[Dict[str, Any]]:
-    """Load or build MedQA adversarial pairs."""
-    if os.path.exists(CONFIG.medqa_cache):
-        print(f"Loading MedQA from cache: {CONFIG.medqa_cache}")
-        return load_pairs(CONFIG.medqa_cache)[:n_total]
+def _build_medqa_pairs_with_pooling(
+    model,
+    tokenizer,
+    n_target: int,
+) -> List[Dict[str, Any]]:
+    """MedQA pairs require baseline-correct MCQ answers; pool more items if needed."""
+    splits_order = ("train", "test", "validation")
+    multipliers = (1, 2, 3, 4, 6, 8, 12, 16, 24, 32)
+    best: List[Dict[str, Any]] = []
+    for split in splits_order:
+        for m in multipliers:
+            n_pool = min(n_target * m, 20000)
+            try:
+                ds = load_mcq_dataset(n_total=n_pool, split=split)
+            except Exception as exc:
+                print(f"  MedQA: skip split={split!r} n_pool={n_pool}: {exc}")
+                continue
+            if not ds:
+                continue
+            pairs = build_adversarial_pairs(
+                model=model,
+                tokenizer=tokenizer,
+                dataset=ds,
+                n_calib=len(ds),
+            )
+            if len(pairs) > len(best):
+                best = list(pairs)
+            if len(pairs) >= n_target:
+                return pairs[:n_target]
+    if len(best) >= n_target:
+        return best[:n_target]
+    return best
 
-    print(f"Building MedQA pairs (n={n_total})...")
-    ds = load_mcq_dataset(n_total=n_total)
-    pairs = build_adversarial_pairs(
-        model=model,
-        tokenizer=tokenizer,
-        dataset=ds,
-        n_calib=len(ds),
-    )
-    save_pairs(CONFIG.medqa_cache, pairs)
+
+def get_medqa_pairs(model, tokenizer, n_total: int) -> List[Dict[str, Any]]:
+    """Load or build MedQA adversarial pairs (invalid/short cache is rebuilt)."""
+    cache_path = CONFIG.medqa_cache
+    if os.path.exists(cache_path):
+        cached = load_pairs(cache_path)
+        if len(cached) >= n_total:
+            print(f"Loading MedQA from cache: {cache_path}")
+            return cached[:n_total]
+        print(
+            f"MedQA cache ignored ({len(cached)} pairs, need {n_total}); rebuilding..."
+        )
+        try:
+            os.remove(cache_path)
+        except OSError:
+            pass
+
+    print(f"Building MedQA pairs (target n={n_total})...")
+    pairs = _build_medqa_pairs_with_pooling(model, tokenizer, n_total)
+    if not pairs:
+        raise RuntimeError(
+            "MedQA: no adversarial pairs passed the baseline-correct filter. "
+            "Check the model checkpoint and tokenizer alignment with MedQA."
+        )
+    if len(pairs) < n_total:
+        print(
+            f"  MedQA: only {len(pairs)} pairs available (wanted {n_total}); "
+            "proceeding with fewer."
+        )
+    else:
+        pairs = pairs[:n_total]
+    save_pairs(cache_path, pairs)
     return pairs
 
 
@@ -196,8 +248,17 @@ def make_pubmed_prompt(question: str, contexts: List[str]) -> str:
 def get_pubmedqa_pairs(tokenizer, n_total: int) -> List[Dict[str, Any]]:
     """Load or build PubMedQA adversarial pairs."""
     if os.path.exists(CONFIG.pubmedqa_cache):
-        print(f"Loading PubMedQA from cache: {CONFIG.pubmedqa_cache}")
-        return load_pairs(CONFIG.pubmedqa_cache)[:n_total]
+        cached = load_pairs(CONFIG.pubmedqa_cache)
+        if len(cached) >= n_total:
+            print(f"Loading PubMedQA from cache: {CONFIG.pubmedqa_cache}")
+            return cached[:n_total]
+        print(
+            f"PubMedQA cache ignored ({len(cached)} pairs, need {n_total}); rebuilding..."
+        )
+        try:
+            os.remove(CONFIG.pubmedqa_cache)
+        except OSError:
+            pass
 
     print(f"Building PubMedQA pairs (n={n_total})...")
     yes_id = get_single_token_id(tokenizer, "yes")
@@ -258,8 +319,17 @@ def make_medmcqa_prompt(row: Dict[str, Any]) -> str:
 def get_medmcqa_pairs(model, tokenizer, n_total: int) -> List[Dict[str, Any]]:
     """Load or build MedMCQA adversarial pairs."""
     if os.path.exists(CONFIG.medmcqa_cache):
-        print(f"Loading MedMCQA from cache: {CONFIG.medmcqa_cache}")
-        return load_pairs(CONFIG.medmcqa_cache)[:n_total]
+        cached = load_pairs(CONFIG.medmcqa_cache)
+        if len(cached) >= n_total:
+            print(f"Loading MedMCQA from cache: {CONFIG.medmcqa_cache}")
+            return cached[:n_total]
+        print(
+            f"MedMCQA cache ignored ({len(cached)} pairs, need {n_total}); rebuilding..."
+        )
+        try:
+            os.remove(CONFIG.medmcqa_cache)
+        except OSError:
+            pass
 
     print(f"Building MedMCQA pairs (n={n_total})...")
     ds = load_dataset("openlifescienceai/medmcqa", split="train")
@@ -350,8 +420,15 @@ def mean_drop_for_set(
     baseline: Optional[torch.Tensor] = None,
 ) -> Tuple[float, float, List[float]]:
     """Mean/std margin drop for a set of neurons (simultaneous crush)."""
+    if not pairs:
+        return 0.0, 0.0, []
     if baseline is None:
         baseline = probe.compute_per_sample_margins(pairs)
+    if baseline.numel() == 0:
+        return 0.0, 0.0, []
+    if not neurons:
+        return 0.0, 0.0, []
+
     originals = []
 
     try:
@@ -360,9 +437,13 @@ def mean_drop_for_set(
             originals.append((l, c, orig))
 
         ablated = probe.compute_per_sample_margins(pairs)
-        drops = (baseline - ablated).cpu().numpy()
-
-        return float(drops.mean()), float(drops.std(ddof=1)), drops.tolist()
+        drops = (baseline - ablated).cpu().numpy().astype(np.float64)
+        if drops.size == 0:
+            return 0.0, 0.0, []
+        mean_v = float(np.mean(drops))
+        if drops.size < 2:
+            return mean_v, 0.0, drops.tolist()
+        return mean_v, float(np.std(drops, ddof=1)), drops.tolist()
 
     finally:
         for l, c, orig in originals:
@@ -392,10 +473,25 @@ def compare_two_samples_welch(
     alternative: str = "greater",
 ) -> Dict[str, Any]:
     """Welch t-test and Cohen's d between two independent samples."""
-    m1 = float(np.mean(sample_a))
-    s1 = float(np.std(sample_a, ddof=1))
-    m2 = float(np.mean(sample_b))
-    s2 = float(np.std(sample_b, ddof=1))
+    sample_a = np.asarray(sample_a, dtype=np.float64).ravel()
+    sample_b = np.asarray(sample_b, dtype=np.float64).ravel()
+    m1 = float(np.mean(sample_a)) if sample_a.size else 0.0
+    m2 = float(np.mean(sample_b)) if sample_b.size else 0.0
+    s1 = float(np.std(sample_a, ddof=1)) if sample_a.size > 1 else 0.0
+    s2 = float(np.std(sample_b, ddof=1)) if sample_b.size > 1 else 0.0
+
+    if sample_a.size < 2 or sample_b.size < 2:
+        return {
+            "mean_a": m1,
+            "std_a": s1,
+            "mean_b": m2,
+            "std_b": s2,
+            "t_statistic": float("nan"),
+            "p_value": float("nan"),
+            "cohens_d": 0.0,
+            "n_a": int(sample_a.size),
+            "n_b": int(sample_b.size),
+        }
 
     t_stat, p_value = stats.ttest_ind(
         sample_a, sample_b, equal_var=False, alternative=alternative
@@ -418,6 +514,8 @@ def compare_two_samples_welch(
 
 
 def format_p_value(p: float) -> str:
+    if p != p:  # NaN
+        return "p=n/a"
     if p < 1e-300:
         return "p<1e-300"
     if p < 0.001:
@@ -467,13 +565,22 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        trust_remote_code=True,
-        local_files_only=True,
-    )
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=True,
+            local_files_only=True,
+        )
+    except TypeError:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=True,
+            local_files_only=True,
+        )
     model.eval()
     probe = MedNSQProbe(model)
 
@@ -528,6 +635,20 @@ def main():
 
     for name, pairs in datasets.items():
         print(f"  {name}...")
+        if not pairs:
+            print(f"    SKIP: no pairs for {name}")
+            anchor_vs_random[name] = {
+                "error": "no_pairs",
+                "anchor_mean": float("nan"),
+                "anchor_std": float("nan"),
+                "random_mean": float("nan"),
+                "random_std": float("nan"),
+                "t_statistic": float("nan"),
+                "p_value": float("nan"),
+                "cohens_d": float("nan"),
+                "n_random_trials": CONFIG.n_random_trials,
+            }
+            continue
 
         anchor_mean, anchor_std, anchor_drop_list = mean_drop_for_set(
             probe, pairs, anchor_neurons, baseline=baseline[name]
@@ -562,7 +683,11 @@ def main():
         )
 
         random_mean = float(np.mean(random_arr))
-        random_std = float(np.std(random_arr, ddof=1))
+        random_std = (
+            float(np.std(random_arr, ddof=1))
+            if random_arr.size > 1
+            else 0.0
+        )
 
         anchor_vs_random[name] = {
             "anchor_mean": anchor_mean,
