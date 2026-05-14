@@ -16,6 +16,7 @@ NOTE on architecture:
 import hashlib
 import inspect
 import json
+import os
 import random
 import time
 from dataclasses import asdict, dataclass
@@ -74,6 +75,14 @@ class Config:
 
 
 CFG = Config()
+
+os.environ["HF_HUB_DISABLE_XET"] = "1"
+os.environ["HF_TRANSFER"] = "0"
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
+
+os.environ["HF_HUB_DISABLE_XET"] = "1"
+os.environ["HF_TRANSFER"] = "0"
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
 
 
 def log(msg: str) -> None:
