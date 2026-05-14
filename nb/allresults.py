@@ -1,9 +1,9 @@
 """
-Cross-dataset anchor transfer for Llama-3-8B-UltraMedical (TsinghuaC3I).
+Cross-dataset anchor transfer for AlphaMed-8B-instruct-rl (che111/AlphaMed-8B-instruct-rl).
 
-Loads weights only from CFG.model_path (local snapshot; HF repo id is identity
-only, not used at runtime). Fixed anchors from JSON; per-anchor column crush on
-MedQA / MedMCQA / PubMedQA with margin drops vs dataset baselines.
+Weights load from CFG.model_path only (local snapshot; see
+https://huggingface.co/che111/AlphaMed-8B-instruct-rl). Fixed anchors from JSON;
+per-anchor column crush on MedQA / MedMCQA / PubMedQA with margin drops vs baselines.
 """
 
 import os
@@ -34,9 +34,9 @@ from mednsq_probe import MedNSQProbe
 @dataclass
 class Config:
     """Immutable configuration for reproducibility."""
-    model_key: str = "ultramedical_8b"
-    model_path: str = "/workspace/ultramedical"
-    anchor_file: str = "/workspace/mednsq/nb/anchors_ultramedical_8b.json"
+    model_key: str = "alphamed_8b_instruct_rl"
+    model_path: str = "/workspace/alphamed"
+    anchor_file: str = "anchors_alphamed_8b_instruct_rl.json"
 
     n_medqa: int = 400
     n_medmcqa: int = 400
@@ -46,11 +46,11 @@ class Config:
 
     random_seed: int = 42
 
-    medqa_cache: str = "ultramedical_medqa_pairs.txt"
-    medmcqa_cache: str = "ultramedical_medmcqa_pairs.txt"
-    pubmedqa_cache: str = "ultramedical_pubmedqa_pairs.txt"
+    medqa_cache: str = "alphamed_medqa_pairs.txt"
+    medmcqa_cache: str = "alphamed_medmcqa_pairs.txt"
+    pubmedqa_cache: str = "alphamed_pubmedqa_pairs.txt"
 
-    output_file: str = "crossdataset_ultramedical_8b.json"
+    output_file: str = "crossdataset_alphamed_8b_instruct_rl.json"
 
     max_contexts: int = 3
     max_context_chars: int = 2200
