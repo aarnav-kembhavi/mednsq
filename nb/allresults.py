@@ -1,21 +1,16 @@
 """
-AlphaMed-8B-Instruct-RL anchor-vs-random evaluation (MedNSQ-style).
+Cross-dataset anchor transfer for Llama-3-8B-UltraMedical (TsinghuaC3I).
 
-Evaluates discovered anchors against random neuron groups on:
-- MedQA (4-way multiple choice)
-- MedMCQA (4-way multiple choice)
-- PubMedQA (binary yes/no)
-
-Outputs paper-style anchor vs random statistics (Welch t-test, Cohen's d) and
-per-anchor cross-dataset margin drops. Loads model locally only (no Hub download).
+Loads weights only from CFG.model_path (local snapshot; HF repo id is identity
+only, not used at runtime). Fixed anchors from JSON; per-anchor column crush on
+MedQA / MedMCQA / PubMedQA with margin drops vs dataset baselines.
 """
 
 import os
 import json
 import random
 import hashlib
-import numpy as np
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -23,9 +18,7 @@ from datetime import datetime
 import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from scipy import stats
 
-# Optional local module path
 _mednsq_lib_dir = os.getenv("MEDNSQ_LIB_DIR")
 if _mednsq_lib_dir and _mednsq_lib_dir not in os.sys.path:
     os.sys.path.insert(0, _mednsq_lib_dir)
@@ -41,30 +34,28 @@ from mednsq_probe import MedNSQProbe
 @dataclass
 class Config:
     """Immutable configuration for reproducibility."""
-    model_path: str = "/workspace/alphamed"
-    anchor_file: str = "anchors_alphamed_8b_instruct_rl.json"
+    model_key: str = "ultramedical_8b"
+    model_path: str = "/workspace/ultramedical"
+    anchor_file: str = "/workspace/mednsq/nb/anchors_ultramedical_8b.json"
 
     n_medqa: int = 400
     n_medmcqa: int = 400
     n_pubmedqa: int = 400
 
-    # If set, only the first `anchor_limit` anchors from JSON (order preserved).
     anchor_limit: Optional[int] = None
 
-    n_random_trials: int = 500
     random_seed: int = 42
 
-    medqa_cache: str = "alphamed_medqa_pairs.txt"
-    medmcqa_cache: str = "alphamed_medmcqa_pairs.txt"
-    pubmedqa_cache: str = "alphamed_pubmedqa_pairs.txt"
+    medqa_cache: str = "ultramedical_medqa_pairs.txt"
+    medmcqa_cache: str = "ultramedical_medmcqa_pairs.txt"
+    pubmedqa_cache: str = "ultramedical_pubmedqa_pairs.txt"
 
-    output_file: str = "alphamed_anchor_results.json"
+    output_file: str = "crossdataset_ultramedical_8b.json"
 
     max_contexts: int = 3
     max_context_chars: int = 2200
 
     def __post_init__(self):
-        assert self.n_random_trials >= 2, "Need at least 2 random trials for variance"
         if self.anchor_limit is not None:
             assert self.anchor_limit > 0, "anchor_limit must be positive when set"
 
@@ -381,13 +372,6 @@ def get_medmcqa_pairs(model, tokenizer, n_total: int) -> List[Dict[str, Any]]:
 
 
 # ============================================================================
-# ABLATION METHOD
-# ============================================================================
-
-ABLATION_METHOD = "crush"
-
-
-# ============================================================================
 # CORE METRICS
 # ============================================================================
 
@@ -413,149 +397,56 @@ def mean_drop_for_neuron(
     return float(drops.mean().item())
 
 
-def mean_drop_for_set(
-    probe: MedNSQProbe,
-    pairs: List[Dict[str, Any]],
-    neurons: List[Tuple[int, int]],
-    baseline: Optional[torch.Tensor] = None,
-) -> Tuple[float, float, List[float]]:
-    """Mean/std margin drop for a set of neurons (simultaneous crush)."""
-    if not pairs:
-        return 0.0, 0.0, []
-    if baseline is None:
-        baseline = probe.compute_per_sample_margins(pairs)
-    if baseline.numel() == 0:
-        return 0.0, 0.0, []
-    if not neurons:
-        return 0.0, 0.0, []
-
-    originals = []
-
-    try:
-        for l, c in neurons:
-            orig = probe.simulate_column_crush(l, c)
-            originals.append((l, c, orig))
-
-        ablated = probe.compute_per_sample_margins(pairs)
-        drops = (baseline - ablated).cpu().numpy().astype(np.float64)
-        if drops.size == 0:
-            return 0.0, 0.0, []
-        mean_v = float(np.mean(drops))
-        if drops.size < 2:
-            return mean_v, 0.0, drops.tolist()
-        return mean_v, float(np.std(drops, ddof=1)), drops.tolist()
-
-    finally:
-        for l, c, orig in originals:
-            probe.restore_column(l, c, orig)
+def margin_tensor_stats(margins: torch.Tensor) -> Dict[str, float]:
+    """Baseline margin statistics for one dataset."""
+    if margins.numel() == 0:
+        return {"mean": 0.0, "std": 0.0, "frac_neg": 0.0, "n": 0}
+    m = margins.float()
+    n = int(m.numel())
+    mean_v = float(m.mean().item())
+    std_v = float(m.std().item()) if n > 1 else 0.0
+    frac_neg = float((m < 0).float().mean().item())
+    return {"mean": mean_v, "std": std_v, "frac_neg": frac_neg, "n": n}
 
 
-def bootstrap_mean_drops(
-    per_sample_drops: np.ndarray,
-    n_trials: int,
-    seed: int,
-) -> np.ndarray:
-    """Bootstrap sample means of per-sample drops (one scalar per trial)."""
-    rng = np.random.default_rng(seed)
-    n = len(per_sample_drops)
-    if n == 0:
-        return np.zeros(n_trials)
-    out = np.empty(n_trials, dtype=np.float64)
-    for i in range(n_trials):
-        idx = rng.integers(0, n, size=n)
-        out[i] = float(per_sample_drops[idx].mean())
-    return out
+def rel_drop(drop: float, baseline_mean: float) -> float:
+    if abs(baseline_mean) < 1e-12:
+        return 0.0
+    return drop / baseline_mean
 
 
-def compare_two_samples_welch(
-    sample_a: np.ndarray,
-    sample_b: np.ndarray,
-    alternative: str = "greater",
-) -> Dict[str, Any]:
-    """Welch t-test and Cohen's d between two independent samples."""
-    sample_a = np.asarray(sample_a, dtype=np.float64).ravel()
-    sample_b = np.asarray(sample_b, dtype=np.float64).ravel()
-    m1 = float(np.mean(sample_a)) if sample_a.size else 0.0
-    m2 = float(np.mean(sample_b)) if sample_b.size else 0.0
-    s1 = float(np.std(sample_a, ddof=1)) if sample_a.size > 1 else 0.0
-    s2 = float(np.std(sample_b, ddof=1)) if sample_b.size > 1 else 0.0
+# ============================================================================
+# ANCHORS
+# ============================================================================
 
-    if sample_a.size < 2 or sample_b.size < 2:
-        return {
-            "mean_a": m1,
-            "std_a": s1,
-            "mean_b": m2,
-            "std_b": s2,
-            "t_statistic": float("nan"),
-            "p_value": float("nan"),
-            "cohens_d": 0.0,
-            "n_a": int(sample_a.size),
-            "n_b": int(sample_b.size),
-        }
-
-    t_stat, p_value = stats.ttest_ind(
-        sample_a, sample_b, equal_var=False, alternative=alternative
-    )
-
-    pooled_std = np.sqrt((s1 ** 2 + s2 ** 2) / 2)
-    cohens_d = (m1 - m2) / pooled_std if pooled_std > 0 else 0.0
-
-    return {
-        "mean_a": m1,
-        "std_a": s1,
-        "mean_b": m2,
-        "std_b": s2,
-        "t_statistic": float(t_stat),
-        "p_value": float(p_value),
-        "cohens_d": float(cohens_d),
-        "n_a": int(len(sample_a)),
-        "n_b": int(len(sample_b)),
-    }
-
-
-def format_p_value(p: float) -> str:
-    if p != p:  # NaN
-        return "p=n/a"
-    if p < 1e-300:
-        return "p<1e-300"
-    if p < 0.001:
-        return "p<0.001"
-    return f"p={p:.4g}"
+def load_anchors_from_json(path: str) -> Tuple[List[List[int]], List[Tuple[int, int]]]:
+    """
+    Returns anchors_input (all [layer, column] from JSON) and anchor_neurons
+    (possibly truncated by CONFIG.anchor_limit) as (layer, column) tuples.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    raw = [(int(a["layer"]), int(a["column"])) for a in data["anchors"]]
+    anchors_input = [[l, c] for l, c in raw]
+    tuples = list(raw)
+    if CONFIG.anchor_limit is not None:
+        tuples = tuples[: CONFIG.anchor_limit]
+    return anchors_input, tuples
 
 
 # ============================================================================
 # MAIN
 # ============================================================================
 
-def load_anchor_neurons(path: str) -> List[Tuple[int, int]]:
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    anchors = data["anchors"]
-    neurons = [(int(a["layer"]), int(a["column"])) for a in anchors]
-    if CONFIG.anchor_limit is not None:
-        neurons = neurons[: CONFIG.anchor_limit]
-    return neurons
-
-
 def main():
     random.seed(CONFIG.random_seed)
-    np.random.seed(CONFIG.random_seed)
     torch.manual_seed(CONFIG.random_seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(CONFIG.random_seed)
 
     model_path = CONFIG.model_path
 
-    print("=" * 60)
-    print("ALPHAMED-8B ANCHOR VS RANDOM (MedNSQ)")
-    print("=" * 60)
-    print(f"Config hash: {CONFIG.config_hash}")
-    print(f"Model path: {model_path}")
-    print(f"Anchor file: {CONFIG.anchor_file}")
-    print(f"Random trials: {CONFIG.n_random_trials}")
-    print("=" * 60)
-
-    print("\n[1/4] Loading model (local only)...")
+    print("Loading model...")
     tokenizer = AutoTokenizer.from_pretrained(
         model_path,
         trust_remote_code=True,
@@ -584,7 +475,7 @@ def main():
     model.eval()
     probe = MedNSQProbe(model)
 
-    print("\n[2/4] Preparing dataset pairs...")
+    print("Preparing dataset pairs...")
     medqa = get_medqa_pairs(model, tokenizer, CONFIG.n_medqa)
     medmcqa = get_medmcqa_pairs(model, tokenizer, CONFIG.n_medmcqa)
     pubmedqa = get_pubmedqa_pairs(tokenizer, CONFIG.n_pubmedqa)
@@ -595,154 +486,74 @@ def main():
         "pubmedqa": pubmedqa,
     }
 
-    print(f"  MedQA: {len(medqa)} pairs")
-    print(f"  MedMCQA: {len(medmcqa)} pairs")
-    print(f"  PubMedQA: {len(pubmedqa)} pairs")
-
-    print("\n[3/4] Loading anchors from JSON...")
+    print("Loading anchors...")
     if not os.path.isfile(CONFIG.anchor_file):
         raise FileNotFoundError(
             f"Anchor file not found: {CONFIG.anchor_file} "
             "(expected keys: anchors[].layer, anchors[].column)"
         )
-    anchor_neurons = load_anchor_neurons(CONFIG.anchor_file)
+    anchors_input, anchor_neurons = load_anchors_from_json(CONFIG.anchor_file)
     if not anchor_neurons:
         raise RuntimeError("No anchors loaded from JSON.")
-    print(f"  Using {len(anchor_neurons)} anchors (JSON order preserved)")
+    anchors_used = [[layer, col] for layer, col in anchor_neurons]
 
-    n_layers = len(probe.layers)
-    n_cols = probe.intermediate_size
-    anchor_set = set(anchor_neurons)
-    candidate_neurons = [
-        (l, c)
-        for l in range(n_layers)
-        for c in range(n_cols)
-        if (l, c) not in anchor_set
-    ]
-    k_group = len(anchor_neurons)
-    if len(candidate_neurons) < k_group:
-        raise RuntimeError(
-            f"Not enough non-anchor neurons: need {k_group}, have {len(candidate_neurons)}"
-        )
+    print("Computing dataset baselines...")
+    baseline_tensors = {
+        name: probe.compute_per_sample_margins(pairs)
+        for name, pairs in datasets.items()
+    }
+    dataset_baselines = {
+        name: margin_tensor_stats(baseline_tensors[name])
+        for name in ("medqa", "medmcqa", "pubmedqa")
+    }
 
-    print("\n[4/4] Anchor vs random (group crush)...")
-    baseline = {name: probe.compute_per_sample_margins(pairs) for name, pairs in datasets.items()}
+    bm = {k: dataset_baselines[k]["mean"] for k in dataset_baselines}
 
-    random_trial_rng = random.Random(CONFIG.random_seed + 911)
-
-    anchor_vs_random: Dict[str, Any] = {}
+    print("Per-anchor cross-dataset margin drops...")
     rows: List[Dict[str, Any]] = []
-
-    for name, pairs in datasets.items():
-        print(f"  {name}...")
-        if not pairs:
-            print(f"    SKIP: no pairs for {name}")
-            anchor_vs_random[name] = {
-                "error": "no_pairs",
-                "anchor_mean": float("nan"),
-                "anchor_std": float("nan"),
-                "random_mean": float("nan"),
-                "random_std": float("nan"),
-                "t_statistic": float("nan"),
-                "p_value": float("nan"),
-                "cohens_d": float("nan"),
-                "n_random_trials": CONFIG.n_random_trials,
-            }
-            continue
-
-        anchor_mean, anchor_std, anchor_drop_list = mean_drop_for_set(
-            probe, pairs, anchor_neurons, baseline=baseline[name]
-        )
-        anchor_per_sample = np.asarray(anchor_drop_list, dtype=np.float64)
-
-        boot_seed = CONFIG.random_seed + {"medqa": 11, "medmcqa": 17, "pubmedqa": 23}[name]
-        anchor_bootstrap_means = bootstrap_mean_drops(
-            anchor_per_sample,
-            n_trials=CONFIG.n_random_trials,
-            seed=boot_seed,
-        )
-
-        random_trial_means: List[float] = []
-        for trial_idx in range(CONFIG.n_random_trials):
-            if (trial_idx + 1) % 100 == 0:
-                print(f"    random trials {trial_idx + 1}/{CONFIG.n_random_trials}")
-            trial = random_trial_rng.sample(candidate_neurons, k_group)
-            mean_drop, _, _ = mean_drop_for_set(
-                probe,
-                pairs,
-                trial,
-                baseline=baseline[name],
-            )
-            random_trial_means.append(mean_drop)
-
-        random_arr = np.asarray(random_trial_means, dtype=np.float64)
-        stat = compare_two_samples_welch(
-            anchor_bootstrap_means,
-            random_arr,
-            alternative="greater",
-        )
-
-        random_mean = float(np.mean(random_arr))
-        random_std = (
-            float(np.std(random_arr, ddof=1))
-            if random_arr.size > 1
-            else 0.0
-        )
-
-        anchor_vs_random[name] = {
-            "anchor_mean": anchor_mean,
-            "anchor_std": anchor_std,
-            "anchor_bootstrap_mean_of_means": stat["mean_a"],
-            "anchor_bootstrap_std": stat["std_a"],
-            "random_mean": random_mean,
-            "random_std": random_std,
-            "random_trial_means": random_trial_means,
-            "t_statistic": stat["t_statistic"],
-            "p_value": stat["p_value"],
-            "cohens_d": stat["cohens_d"],
-            "n_random_trials": CONFIG.n_random_trials,
-            "welch_compares": "bootstrap_anchor_means_vs_random_trial_means",
-        }
-
-        p_str = format_p_value(stat["p_value"])
-        print(
-            f"{name}: anchor={anchor_mean:+.4f} ± {anchor_std:.4f}, "
-            f"random={random_mean:+.4f} ± {random_std:.4f}, "
-            f"d={stat['cohens_d']:+.2f}, {p_str}"
-        )
-
-    print("\nPer-anchor cross-dataset margin drops...")
+    n_anchors = len(anchor_neurons)
     for i, (l, c) in enumerate(anchor_neurons, start=1):
-        row_data = {"layer": l, "column": c}
-        d1 = mean_drop_for_neuron(probe, medqa, baseline["medqa"], l, c)
-        d2 = mean_drop_for_neuron(probe, medmcqa, baseline["medmcqa"], l, c)
-        d3 = mean_drop_for_neuron(probe, pubmedqa, baseline["pubmedqa"], l, c)
-        row_data["drop_medqa"] = d1
-        row_data["drop_medmcqa"] = d2
-        row_data["drop_pubmedqa"] = d3
+        d1 = mean_drop_for_neuron(probe, medqa, baseline_tensors["medqa"], l, c)
+        d2 = mean_drop_for_neuron(probe, medmcqa, baseline_tensors["medmcqa"], l, c)
+        d3 = mean_drop_for_neuron(probe, pubmedqa, baseline_tensors["pubmedqa"], l, c)
+        row_data = {
+            "layer": l,
+            "column": c,
+            "drop_medqa": d1,
+            "drop_medmcqa": d2,
+            "drop_pubmedqa": d3,
+            "rel_drop_medqa": rel_drop(d1, bm["medqa"]),
+            "rel_drop_medmcqa": rel_drop(d2, bm["medmcqa"]),
+            "rel_drop_pubmedqa": rel_drop(d3, bm["pubmedqa"]),
+        }
         rows.append(row_data)
-        print(f"  [{i:03d}/{len(anchor_neurons)}] L{l} C{c}: mqa={d1:+.4f}, mmcqa={d2:+.4f}, pmqa={d3:+.4f}")
+        print(
+            f"[{i:03d}/{n_anchors:03d}] L{l} C{c}: "
+            f"mqa={d1:+.4f}, mmcqa={d2:+.4f}, pmqa={d3:+.4f}"
+        )
 
-    print(f"\nSaving results to {CONFIG.output_file}...")
+    metadata = {
+        "model_key": CONFIG.model_key,
+        "model_path": CONFIG.model_path,
+        "timestamp": datetime.now().isoformat(),
+        "torch_version": torch.__version__,
+        "ablation_method": "column_crush_1bit",
+        "anchor_count": len(anchor_neurons),
+        "anchors_input": anchors_input,
+        "anchors_used": anchors_used,
+    }
+
     out = {
-        "metadata": {
-            "config": CONFIG.config_dict,
-            "config_hash": CONFIG.config_hash,
-            "timestamp": datetime.now().isoformat(),
-            "random_seed": CONFIG.random_seed,
-            "torch_version": torch.__version__,
-            "ablation_method": ABLATION_METHOD,
-        },
-        "dataset_sizes": {k: len(v) for k, v in datasets.items()},
-        "anchor_vs_random": anchor_vs_random,
+        "metadata": metadata,
+        "dataset_baselines": dataset_baselines,
         "anchors": rows,
     }
 
+    print(f"Saving results to {CONFIG.output_file}...")
     with open(CONFIG.output_file, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
 
-    print(f"\nDone. Results saved to {CONFIG.output_file}")
-    print("=" * 60)
+    print(f"Done. Results saved to {CONFIG.output_file}")
 
 
 if __name__ == "__main__":
