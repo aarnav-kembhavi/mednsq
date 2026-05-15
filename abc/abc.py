@@ -14,27 +14,56 @@ def get_pubmedqa_key(sample):
         return None
 
 
+def _result_json_paths():
+    """All cross-dataset result JSONs: standard name or allresults `crossdataset_*.json`."""
+    seen = set()
+    out = []
+    for pattern in ("*_cross_dataset_results.json", "crossdataset_*.json"):
+        for f in glob.glob(pattern):
+            ap = os.path.normcase(os.path.abspath(f))
+            if ap in seen:
+                continue
+            seen.add(ap)
+            out.append(f)
+    return sorted(out, key=os.path.basename)
+
+
+def _model_raw_key(path: str, data: dict) -> str:
+    """Stable model id for name_map: prefer JSON metadata, else infer from filename."""
+    mk = (data.get("metadata") or {}).get("model_key")
+    if isinstance(mk, str) and mk.strip():
+        return mk.strip().lower()
+    base = os.path.basename(path).lower()
+    if "_cross" in base:
+        return base.split("_cross")[0]
+    if base.startswith("crossdataset_") and base.endswith(".json"):
+        return base[len("crossdataset_") : -len(".json")]
+    return os.path.splitext(base)[0]
+
+
 def analyze_sabotage_depth():
-    print(f"{'Model':<20} | {'Total':<5} | {'Sabotage%':<10} | {'Sab. Layer':<10} | {'Norm. Layer':<10} | {'Shift'}")
-    print("-" * 75)
+    print(f"{'Model':<24} | {'Total':<5} | {'Sabotage%':<10} | {'Sab. Layer':<10} | {'Norm. Layer':<10} | {'Shift'}")
+    print("-" * 79)
 
     all_stats = []
 
-    for f in glob.glob('*_cross_dataset_results.json'):
+    for f in _result_json_paths():
         with open(f) as fp:
             data = json.load(fp)
 
         if 'anchors' not in data or len(data['anchors']) == 0:
             continue
 
-        raw = os.path.basename(f).split('_cross')[0].lower()
+        raw = _model_raw_key(f, data)
 
         name_map = {
             "gemma4b": "GEMMA4B",
             "medgemma": "MEDGEMMA",
             "llama3_8b": "LLAMA3_8B",
             "med42": "MED42",
-            "alphamed_7b": "ALPHAMED",
+            "alphamed_7b": "ALPHAMED_7B",
+            "alphamed_8b_instruct_rl": "ALPHAMED_8B_INSTR_RL",
+            "ultramedical_8b": "ULTRAMEDICAL_8B",
             "qwen25_8b": "QWEN25_8B",
             "meditron": "MEDITRON",
             "base_afm": "BASE_AFM",
@@ -67,7 +96,7 @@ def analyze_sabotage_depth():
         avg_norm = np.mean(norm_layers) if len(norm_layers) > 0 else np.nan
         shift = avg_sab - avg_norm if not (np.isnan(avg_sab) or np.isnan(avg_norm)) else 0
 
-        print(f"{model_name:<20} | {total:<5} | {perc_sab:>8.1f}% | {avg_sab:>10.1f} | {avg_norm:>10.1f} | {shift:>+5.1f}")
+        print(f"{model_name:<24} | {total:<5} | {perc_sab:>8.1f}% | {avg_sab:>10.1f} | {avg_norm:>10.1f} | {shift:>+5.1f}")
 
         if len(sab_layers) == 0 or len(norm_layers) == 0:
             continue
@@ -85,7 +114,9 @@ def analyze_sabotage_depth():
             "MEDGEMMA",
             "LLAMA3_8B",
             "MED42",
-            "ALPHAMED",
+            "ALPHAMED_7B",
+            "ALPHAMED_8B_INSTR_RL",
+            "ULTRAMEDICAL_8B",
             "QWEN25_8B",
             "MEDITRON",
             "BASE_AFM",
@@ -96,7 +127,7 @@ def analyze_sabotage_depth():
         ordered_stats = [stats_dict[m] for m in order if m in stats_dict]
 
         plt.style.use('seaborn-v0_8-white')
-        fig, ax = plt.subplots(figsize=(12, 6))
+        fig, ax = plt.subplots(figsize=(14, 6))
 
         for i, stat in enumerate(ordered_stats):
             sab = stat['sab_layers']
@@ -129,7 +160,7 @@ def analyze_sabotage_depth():
                                             connectionstyle="arc3,rad=-0.3"))
 
         ax.set_xticks(range(len(ordered_stats)))
-        ax.set_xticklabels([s['model'] for s in ordered_stats], fontsize=10)
+        ax.set_xticklabels([s['model'] for s in ordered_stats], fontsize=9, rotation=25, ha="right")
         ax.set_ylabel("Transformer Layer (Depth)")
         ax.set_title("Causal Migration: Sabotage vs Normal Neurons")
 

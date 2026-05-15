@@ -1,11 +1,11 @@
 
 """
-End-to-end EMS pipeline for Llama-3-8B-UltraMedical (local weights at CFG.model_name).
+End-to-end EMS pipeline for Bio-Medical-Llama-3-8B (local weights at CFG.model_name).
 
 NOTE on architecture:
-  - Source model identity on Hugging Face: TsinghuaC3I/Llama-3-8B-UltraMedical (not
+  - Source model identity on Hugging Face: ContactDoctor/Bio-Medical-Llama-3-8B (not
     loaded remotely at runtime; execution uses the local snapshot under CFG.model_name).
-  - UltraMedical is Llama-family / Llama-3 based (LlamaForCausalLM-style stack):
+  - Bio-Medical-Llama-3-8B is Llama-family / Llama-3 based (LlamaForCausalLM-style stack):
     SwiGLU MLP with gate_proj / up_proj / down_proj; MedNSQProbe targets
     down_proj columns (intervention semantics identical to other Llama-family runs).
   - Expected depth is ~32 hidden layers. Default `middle_layers` covers layers 9–23;
@@ -42,8 +42,8 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "/workspace/ultramedical"
-    # Llama-3-8B-UltraMedical (~32-layer Llama-family). Layers 9–23; tune if layer count changes.
+    model_name: str = "/workspace/bio_medical_llama"
+    # Bio-Medical-Llama-3-8B (~32-layer Llama-family). Layers 9–23; tune if layer count changes.
     middle_layers: Tuple[int, ...] = tuple(range(9, 24))
     seed: int = 42
 
@@ -67,9 +67,9 @@ class Config:
     ablation_test_size: int = 300
 
     # Output
-    discovery_file: str = "anchors_ultramedical_8b.json"
-    ablation_file: str = "ablation_ultramedical_8b.json"
-    log_file: str = "experiment_ultramedical_8b.log"
+    discovery_file: str = "anchors_bio_medical_llama_8b.json"
+    ablation_file: str = "ablation_bio_medical_llama_8b.json"
+    log_file: str = "experiment_bio_medical_llama_8b.log"
 
     intervention_type: str = "column_crush_1bit"
 
@@ -395,7 +395,7 @@ def main():
     setup_seeds(CFG.seed)
     log(f"Config: {asdict(CFG)}")
 
-    log("Loading tokenizer + model (Llama-3-8B-UltraMedical local snapshot, bf16, device_map=auto, trust_remote_code=True)...")
+    log("Loading tokenizer + model (Bio-Medical-Llama-3-8B local snapshot, bf16, device_map=auto, trust_remote_code=True)...")
     tokenizer = AutoTokenizer.from_pretrained(
         CFG.model_name,
         trust_remote_code=True,

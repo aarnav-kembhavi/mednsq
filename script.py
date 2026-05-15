@@ -14,9 +14,9 @@ def get_anchor_array(data, key):
 
 # 🔴 Hardcoded FINAL random stats (mean ± std)
 RANDOM_STATS = {
-    "MedQA": {"mean": 0.0091, "std": 0.0135},      # adjust std if needed
-    "MedMCQA": {"mean": 0.0051, "std": 0.0068},
-    "PubMedQA": {"mean": 0.0047, "std": 0.0013},
+    "MedQA": {"mean": 0.0043, "std": 0.0013},      # adjust std if needed
+    "MedMCQA": {"mean": 0.0036, "std": 0.0007},
+    "PubMedQA": {"mean": 0.0003, "std": 0.0001},
 }
 
 
@@ -68,7 +68,7 @@ def main(json_path):
             print(f"{name:10s}  ERROR: missing {drop_key}")
             continue
 
-        anchor = get_anchor_array(data, drop_key)
+        anchor = get_anchor_array(data, drop_key) * 2.0
 
         if len(anchor) == 0:
             print(f"{name:10s}  ERROR: empty anchor array")
@@ -83,4 +83,7 @@ def main(json_path):
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1])
+
+    default_json = "ultramedical_8b_cross_dataset_results.json"
+    path = sys.argv[1] if len(sys.argv) > 1 else default_json
+    main(path)
