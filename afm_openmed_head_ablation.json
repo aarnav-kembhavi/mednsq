@@ -1,0 +1,3096 @@
+{
+  "metadata": {
+    "model_id": "openmed-community/AFM-4.5B-OpenMed-RL-CoT",
+    "model_key": "afm_openmed",
+    "n_anchors": 38,
+    "n_heads": 20,
+    "head_dim": 128,
+    "n_layers": 36,
+    "scan_layers": [
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "config": {
+      "n_medqa": 200,
+      "n_medmcqa": 200,
+      "n_pubmedqa": 200,
+      "n_attribution_samples": 80,
+      "n_attribution_anchors": 15,
+      "n_ems_samples": 100,
+      "n_ems_layers": 8,
+      "n_coablation_samples": 80,
+      "n_top_heads": 3,
+      "n_top_anchors": 10,
+      "seeds": [
+        42
+      ],
+      "output_dir": "head_ablation_results"
+    },
+    "timestamp": "2026-05-15T14:48:31.583301"
+  },
+  "exp1_head_anchor_attribution": [
+    {
+      "head_layer": 16,
+      "head_idx": 15,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.10754623413085937,
+      "delta": 0.11830520629882812,
+      "rel_delta": 0.5238186925944236
+    },
+    {
+      "head_layer": 20,
+      "head_idx": 14,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.4697265625,
+      "delta": 0.09841308593749998,
+      "rel_delta": 0.2650404365122226
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 16,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.28658447265625,
+      "delta": 0.08472900390625004,
+      "rel_delta": 0.22818725748342078
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 19,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.29439697265625,
+      "delta": 0.07691650390625004,
+      "rel_delta": 0.20714708390765516
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 3,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.486669921875,
+      "delta": 0.076416015625,
+      "rel_delta": 0.1862651749129408
+    },
+    {
+      "head_layer": 19,
+      "head_idx": 16,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.444091796875,
+      "delta": 0.07277832031249998,
+      "rel_delta": 0.19600236696674161
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 3,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.29962158203125,
+      "delta": 0.07169189453125002,
+      "rel_delta": 0.19307646782886181
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 15,
+      "anchor_layer": 16,
+      "anchor_col": 12646,
+      "baseline_act": 0.3628662109375,
+      "ablated_act": 0.2967041015625,
+      "delta": 0.066162109375,
+      "rel_delta": 0.1823319652326696
+    },
+    {
+      "head_layer": 19,
+      "head_idx": 17,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.30631103515625,
+      "delta": 0.06500244140625,
+      "rel_delta": 0.17506081920461244
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 16,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.349267578125,
+      "delta": 0.060986328125000044,
+      "rel_delta": 0.14865508208706918
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 16,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.170294189453125,
+      "delta": 0.0555572509765625,
+      "rel_delta": 0.24599024405717557
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 12,
+      "anchor_layer": 18,
+      "anchor_col": 4213,
+      "baseline_act": 0.190313720703125,
+      "ablated_act": 0.245361328125,
+      "delta": 0.055047607421875006,
+      "rel_delta": 0.28924665646582803
+    },
+    {
+      "head_layer": 19,
+      "head_idx": 16,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.355615234375,
+      "delta": 0.054638671875000044,
+      "rel_delta": 0.13318257554478016
+    },
+    {
+      "head_layer": 14,
+      "head_idx": 3,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.3568603515625,
+      "delta": 0.05339355468750001,
+      "rel_delta": 0.13014758387686953
+    },
+    {
+      "head_layer": 18,
+      "head_idx": 1,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.3572998046875,
+      "delta": 0.05295410156250002,
+      "rel_delta": 0.1290764103470188
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 19,
+      "anchor_layer": 16,
+      "anchor_col": 12646,
+      "baseline_act": 0.3628662109375,
+      "ablated_act": 0.31116943359375,
+      "delta": 0.05169677734375,
+      "rel_delta": 0.14246787320301768
+    },
+    {
+      "head_layer": 20,
+      "head_idx": 1,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.32034912109375,
+      "delta": 0.05096435546875,
+      "rel_delta": 0.13725425731065857
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 19,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.32103271484375,
+      "delta": 0.05028076171875001,
+      "rel_delta": 0.1354132421227791
+    },
+    {
+      "head_layer": 15,
+      "head_idx": 10,
+      "anchor_layer": 16,
+      "anchor_col": 12646,
+      "baseline_act": 0.3628662109375,
+      "ablated_act": 0.312841796875,
+      "delta": 0.05002441406249997,
+      "rel_delta": 0.13785911319621394
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 10,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.360595703125,
+      "delta": 0.04965820312500002,
+      "rel_delta": 0.12104260887313796
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 10,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.321923828125,
+      "delta": 0.049389648437500044,
+      "rel_delta": 0.13301334732429346
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 11,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.4206787109375,
+      "delta": 0.049365234374999956,
+      "rel_delta": 0.13294759678186893
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 16,
+      "anchor_layer": 16,
+      "anchor_col": 12646,
+      "baseline_act": 0.3628662109375,
+      "ablated_act": 0.4109619140625,
+      "delta": 0.048095703125,
+      "rel_delta": 0.13254390092559376
+    },
+    {
+      "head_layer": 14,
+      "head_idx": 13,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.4192626953125,
+      "delta": 0.04794921874999997,
+      "rel_delta": 0.12913406532126145
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 16,
+      "anchor_layer": 18,
+      "anchor_col": 4213,
+      "baseline_act": 0.190313720703125,
+      "ablated_act": 0.142547607421875,
+      "delta": 0.047766113281249994,
+      "rel_delta": 0.2509861773479953
+    },
+    {
+      "head_layer": 14,
+      "head_idx": 3,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.41834716796875,
+      "delta": 0.04703369140624997,
+      "rel_delta": 0.12666841998035142
+    },
+    {
+      "head_layer": 14,
+      "head_idx": 4,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.32464599609375,
+      "delta": 0.04666748046875002,
+      "rel_delta": 0.12568216184398756
+    },
+    {
+      "head_layer": 14,
+      "head_idx": 3,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.27235107421875,
+      "delta": 0.046499633789062494,
+      "rel_delta": 0.2058859296181919
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 18,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.4565673828125,
+      "delta": 0.046313476562499956,
+      "rel_delta": 0.11288978811816243
+    },
+    {
+      "head_layer": 18,
+      "head_idx": 3,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.1799041748046875,
+      "delta": 0.04594726562499998,
+      "rel_delta": 0.20344021502470935
+    },
+    {
+      "head_layer": 20,
+      "head_idx": 0,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.416552734375,
+      "delta": 0.04523925781249999,
+      "rel_delta": 0.1218357551121678
+    },
+    {
+      "head_layer": 19,
+      "head_idx": 17,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.4550537109375,
+      "delta": 0.0447998046875,
+      "rel_delta": 0.10920019040423208
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 16,
+      "anchor_layer": 21,
+      "anchor_col": 4765,
+      "baseline_act": 0.2247802734375,
+      "ablated_act": 0.18013916015625,
+      "delta": 0.044641113281250006,
+      "rel_delta": 0.1985988920589268
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 4,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.4158447265625,
+      "delta": 0.04453124999999997,
+      "rel_delta": 0.11992898938186398
+    },
+    {
+      "head_layer": 18,
+      "head_idx": 6,
+      "anchor_layer": 21,
+      "anchor_col": 4765,
+      "baseline_act": 0.2247802734375,
+      "ablated_act": 0.26881103515625,
+      "delta": 0.04403076171874998,
+      "rel_delta": 0.1958835667641642
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 15,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.453857421875,
+      "delta": 0.04360351562499998,
+      "rel_delta": 0.10628421801741603
+    },
+    {
+      "head_layer": 18,
+      "head_idx": 3,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.413818359375,
+      "delta": 0.04250488281249998,
+      "rel_delta": 0.1144716943606498
+    },
+    {
+      "head_layer": 18,
+      "head_idx": 6,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.2678955078125,
+      "delta": 0.042044067382812494,
+      "rel_delta": 0.18615806604645466
+    },
+    {
+      "head_layer": 19,
+      "head_idx": 9,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.3295654296875,
+      "delta": 0.041748046875,
+      "rel_delta": 0.11243342754549757
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 14,
+      "anchor_layer": 18,
+      "anchor_col": 4213,
+      "baseline_act": 0.190313720703125,
+      "ablated_act": 0.148614501953125,
+      "delta": 0.04169921874999999,
+      "rel_delta": 0.21910778988519086
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 18,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.451806640625,
+      "delta": 0.041552734374999956,
+      "rel_delta": 0.10128540821144567
+    },
+    {
+      "head_layer": 13,
+      "head_idx": 11,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.41239013671875,
+      "delta": 0.04107666015625,
+      "rel_delta": 0.11062528762883021
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 17,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.412255859375,
+      "delta": 0.040942382812499956,
+      "rel_delta": 0.11026365964549661
+    },
+    {
+      "head_layer": 19,
+      "head_idx": 3,
+      "anchor_layer": 21,
+      "anchor_col": 9130,
+      "baseline_act": 0.3713134765625,
+      "ablated_act": 0.4122314453125,
+      "delta": 0.04091796874999998,
+      "rel_delta": 0.11019790910307241
+    },
+    {
+      "head_layer": 17,
+      "head_idx": 13,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.1849639892578125,
+      "delta": 0.040887451171875006,
+      "rel_delta": 0.1810369288589969
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 16,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.26654052734375,
+      "delta": 0.040689086914062506,
+      "rel_delta": 0.1801586335629949
+    },
+    {
+      "head_layer": 18,
+      "head_idx": 0,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.1853271484375,
+      "delta": 0.04052429199218749,
+      "rel_delta": 0.17942897285554701
+    },
+    {
+      "head_layer": 14,
+      "head_idx": 4,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.2661590576171875,
+      "delta": 0.040307617187500006,
+      "rel_delta": 0.17846960414760643
+    },
+    {
+      "head_layer": 19,
+      "head_idx": 15,
+      "anchor_layer": 22,
+      "anchor_col": 12414,
+      "baseline_act": 0.41025390625,
+      "ablated_act": 0.4505126953125,
+      "delta": 0.04025878906249997,
+      "rel_delta": 0.09813139726244063
+    },
+    {
+      "head_layer": 16,
+      "head_idx": 12,
+      "anchor_layer": 19,
+      "anchor_col": 8084,
+      "baseline_act": 0.2258514404296875,
+      "ablated_act": 0.1858551025390625,
+      "delta": 0.03999633789062498,
+      "rel_delta": 0.17709135614464935
+    }
+  ],
+  "exp1_top_heads": [
+    [
+      13,
+      16
+    ],
+    [
+      16,
+      15
+    ],
+    [
+      17,
+      3
+    ]
+  ],
+  "exp2_head_cross_dataset": {
+    "baselines": {
+      "medqa": 1.819375,
+      "medmcqa": 2.17578125,
+      "pubmedqa": 2.57125
+    },
+    "heads": {
+      "L13H0": {
+        "medqa": {
+          "ablated_margin": 1.8228125,
+          "drop": -0.0034374999999999822
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19578125,
+          "drop": -0.020000000000000018
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.575,
+          "drop": -0.003750000000000142
+        }
+      },
+      "L13H1": {
+        "medqa": {
+          "ablated_margin": 1.81078125,
+          "drop": 0.008593749999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.16703125,
+          "drop": 0.008750000000000036
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.54875,
+          "drop": 0.022499999999999964
+        }
+      },
+      "L13H2": {
+        "medqa": {
+          "ablated_margin": 1.80671875,
+          "drop": 0.012656250000000036
+        },
+        "medmcqa": {
+          "ablated_margin": 2.186875,
+          "drop": -0.011093750000000124
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.51875,
+          "drop": 0.05250000000000021
+        }
+      },
+      "L13H3": {
+        "medqa": {
+          "ablated_margin": 1.8165625,
+          "drop": 0.0028124999999998845
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18265625,
+          "drop": -0.0068749999999999645
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.52625,
+          "drop": 0.04499999999999993
+        }
+      },
+      "L13H4": {
+        "medqa": {
+          "ablated_margin": 1.85140625,
+          "drop": -0.032031249999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18796875,
+          "drop": -0.012187500000000018
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.49875,
+          "drop": 0.07250000000000023
+        }
+      },
+      "L13H5": {
+        "medqa": {
+          "ablated_margin": 1.83359375,
+          "drop": -0.014218749999999947
+        },
+        "medmcqa": {
+          "ablated_margin": 2.14890625,
+          "drop": 0.026874999999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.6425,
+          "drop": -0.07125000000000004
+        }
+      },
+      "L13H6": {
+        "medqa": {
+          "ablated_margin": 1.81484375,
+          "drop": 0.004531249999999876
+        },
+        "medmcqa": {
+          "ablated_margin": 2.22796875,
+          "drop": -0.05218750000000005
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.35625,
+          "drop": 0.21499999999999986
+        }
+      },
+      "L13H7": {
+        "medqa": {
+          "ablated_margin": 1.81578125,
+          "drop": 0.003593750000000062
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2071875,
+          "drop": -0.03140624999999986
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4975,
+          "drop": 0.07374999999999998
+        }
+      },
+      "L13H8": {
+        "medqa": {
+          "ablated_margin": 1.81796875,
+          "drop": 0.0014062500000000533
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17046875,
+          "drop": 0.005312500000000053
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.69,
+          "drop": -0.11874999999999991
+        }
+      },
+      "L13H9": {
+        "medqa": {
+          "ablated_margin": 1.8478125,
+          "drop": -0.028437500000000115
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2159375,
+          "drop": -0.04015624999999989
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5,
+          "drop": 0.07125000000000004
+        }
+      },
+      "L13H10": {
+        "medqa": {
+          "ablated_margin": 1.76703125,
+          "drop": 0.05234374999999991
+        },
+        "medmcqa": {
+          "ablated_margin": 2.059375,
+          "drop": 0.11640624999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.6875,
+          "drop": -0.11624999999999996
+        }
+      },
+      "L13H11": {
+        "medqa": {
+          "ablated_margin": 1.825625,
+          "drop": -0.006250000000000089
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1809375,
+          "drop": -0.005156250000000195
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5675,
+          "drop": 0.003750000000000142
+        }
+      },
+      "L13H12": {
+        "medqa": {
+          "ablated_margin": 1.827578125,
+          "drop": -0.008203125000000089
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1021875,
+          "drop": 0.07359375000000012
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.49,
+          "drop": 0.08124999999999982
+        }
+      },
+      "L13H13": {
+        "medqa": {
+          "ablated_margin": 1.91875,
+          "drop": -0.09937499999999999
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2871875,
+          "drop": -0.11140624999999993
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.47875,
+          "drop": 0.09250000000000025
+        }
+      },
+      "L13H14": {
+        "medqa": {
+          "ablated_margin": 1.80953125,
+          "drop": 0.009843749999999929
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19203125,
+          "drop": -0.016249999999999876
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.51375,
+          "drop": 0.05750000000000011
+        }
+      },
+      "L13H15": {
+        "medqa": {
+          "ablated_margin": 1.71328125,
+          "drop": 0.10609374999999988
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1746875,
+          "drop": 0.0010937499999998934
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4875,
+          "drop": 0.08375000000000021
+        }
+      },
+      "L13H16": {
+        "medqa": {
+          "ablated_margin": 1.81046875,
+          "drop": 0.008906249999999893
+        },
+        "medmcqa": {
+          "ablated_margin": 2.22328125,
+          "drop": -0.047499999999999876
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.54375,
+          "drop": 0.027499999999999858
+        }
+      },
+      "L13H17": {
+        "medqa": {
+          "ablated_margin": 1.81796875,
+          "drop": 0.0014062500000000533
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19640625,
+          "drop": -0.020624999999999893
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5875,
+          "drop": -0.016249999999999876
+        }
+      },
+      "L13H18": {
+        "medqa": {
+          "ablated_margin": 1.83453125,
+          "drop": -0.015156249999999982
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1528125,
+          "drop": 0.022968749999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4325,
+          "drop": 0.13874999999999993
+        }
+      },
+      "L13H19": {
+        "medqa": {
+          "ablated_margin": 1.82625,
+          "drop": -0.0068749999999999645
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2178125,
+          "drop": -0.042031249999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.6275,
+          "drop": -0.05624999999999991
+        }
+      },
+      "L14H0": {
+        "medqa": {
+          "ablated_margin": 1.8240625,
+          "drop": -0.004687499999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.166875,
+          "drop": 0.008906249999999893
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.37625,
+          "drop": 0.19499999999999984
+        }
+      },
+      "L14H1": {
+        "medqa": {
+          "ablated_margin": 1.81171875,
+          "drop": 0.00765624999999992
+        },
+        "medmcqa": {
+          "ablated_margin": 2.20921875,
+          "drop": -0.03343749999999979
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.255,
+          "drop": 0.31625000000000014
+        }
+      },
+      "L14H2": {
+        "medqa": {
+          "ablated_margin": 1.8765625,
+          "drop": -0.05718749999999995
+        },
+        "medmcqa": {
+          "ablated_margin": 2.16921875,
+          "drop": 0.006562499999999805
+        },
+        "pubmedqa": {
+          "ablated_margin": 1.59375,
+          "drop": 0.9775
+        }
+      },
+      "L14H3": {
+        "medqa": {
+          "ablated_margin": 1.8440625,
+          "drop": -0.024687499999999973
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11390625,
+          "drop": 0.061875000000000124
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.99125,
+          "drop": -0.41999999999999993
+        }
+      },
+      "L14H4": {
+        "medqa": {
+          "ablated_margin": 1.796875,
+          "drop": 0.022499999999999964
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1384375,
+          "drop": 0.03734374999999979
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7225,
+          "drop": -0.1512500000000001
+        }
+      },
+      "L14H5": {
+        "medqa": {
+          "ablated_margin": 1.810625,
+          "drop": 0.008750000000000036
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18171875,
+          "drop": -0.005937499999999929
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4575,
+          "drop": 0.11375000000000002
+        }
+      },
+      "L14H6": {
+        "medqa": {
+          "ablated_margin": 1.75640625,
+          "drop": 0.06296875000000002
+        },
+        "medmcqa": {
+          "ablated_margin": 2.08296875,
+          "drop": 0.09281249999999996
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.44375,
+          "drop": 0.12749999999999995
+        }
+      },
+      "L14H7": {
+        "medqa": {
+          "ablated_margin": 1.8009375,
+          "drop": 0.018437499999999885
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18609375,
+          "drop": -0.010312499999999947
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7575,
+          "drop": -0.1862499999999998
+        }
+      },
+      "L14H8": {
+        "medqa": {
+          "ablated_margin": 1.85265625,
+          "drop": -0.03328124999999993
+        },
+        "medmcqa": {
+          "ablated_margin": 2.20265625,
+          "drop": -0.026874999999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.55875,
+          "drop": 0.012500000000000178
+        }
+      },
+      "L14H9": {
+        "medqa": {
+          "ablated_margin": 1.85890625,
+          "drop": -0.03953125000000002
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19375,
+          "drop": -0.01796875000000009
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.58,
+          "drop": -0.008750000000000036
+        }
+      },
+      "L14H10": {
+        "medqa": {
+          "ablated_margin": 1.77234375,
+          "drop": 0.04703124999999986
+        },
+        "medmcqa": {
+          "ablated_margin": 2.13734375,
+          "drop": 0.038437500000000124
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.38,
+          "drop": 0.19125000000000014
+        }
+      },
+      "L14H11": {
+        "medqa": {
+          "ablated_margin": 1.8325,
+          "drop": -0.013125000000000053
+        },
+        "medmcqa": {
+          "ablated_margin": 2.21265625,
+          "drop": -0.03687500000000021
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5475,
+          "drop": 0.02375000000000016
+        }
+      },
+      "L14H12": {
+        "medqa": {
+          "ablated_margin": 1.83625,
+          "drop": -0.016874999999999973
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17609375,
+          "drop": -0.00031250000000015987
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5775,
+          "drop": -0.006250000000000089
+        }
+      },
+      "L14H13": {
+        "medqa": {
+          "ablated_margin": 1.78140625,
+          "drop": 0.037968749999999885
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18984375,
+          "drop": -0.014062500000000089
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.6875,
+          "drop": -0.11624999999999996
+        }
+      },
+      "L14H14": {
+        "medqa": {
+          "ablated_margin": 1.784375,
+          "drop": 0.03499999999999992
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2496875,
+          "drop": -0.07390624999999984
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.53,
+          "drop": 0.04125000000000023
+        }
+      },
+      "L14H15": {
+        "medqa": {
+          "ablated_margin": 1.843125,
+          "drop": -0.023749999999999938
+        },
+        "medmcqa": {
+          "ablated_margin": 2.211875,
+          "drop": -0.036093750000000036
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.3475,
+          "drop": 0.2237499999999999
+        }
+      },
+      "L14H16": {
+        "medqa": {
+          "ablated_margin": 1.81875,
+          "drop": 0.0006249999999998757
+        },
+        "medmcqa": {
+          "ablated_margin": 2.20609375,
+          "drop": -0.030312499999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.28,
+          "drop": 0.29125000000000023
+        }
+      },
+      "L14H17": {
+        "medqa": {
+          "ablated_margin": 1.84359375,
+          "drop": -0.024218749999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.185,
+          "drop": -0.009218750000000053
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7725,
+          "drop": -0.20124999999999993
+        }
+      },
+      "L14H18": {
+        "medqa": {
+          "ablated_margin": 1.8371875,
+          "drop": -0.01781250000000001
+        },
+        "medmcqa": {
+          "ablated_margin": 2.170625,
+          "drop": 0.005156250000000195
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5125,
+          "drop": 0.05874999999999986
+        }
+      },
+      "L14H19": {
+        "medqa": {
+          "ablated_margin": 1.8278125,
+          "drop": -0.008437500000000098
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18359375,
+          "drop": -0.0078125
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.6575,
+          "drop": -0.08625000000000016
+        }
+      },
+      "L15H0": {
+        "medqa": {
+          "ablated_margin": 1.7775,
+          "drop": 0.041874999999999885
+        },
+        "medmcqa": {
+          "ablated_margin": 2.140625,
+          "drop": 0.03515625
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7575,
+          "drop": -0.1862499999999998
+        }
+      },
+      "L15H1": {
+        "medqa": {
+          "ablated_margin": 1.735,
+          "drop": 0.08437499999999987
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11890625,
+          "drop": 0.05687499999999979
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.57875,
+          "drop": -0.00749999999999984
+        }
+      },
+      "L15H2": {
+        "medqa": {
+          "ablated_margin": 1.83375,
+          "drop": -0.014375000000000027
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2240625,
+          "drop": -0.04828125000000005
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.48375,
+          "drop": 0.08749999999999991
+        }
+      },
+      "L15H3": {
+        "medqa": {
+          "ablated_margin": 1.87265625,
+          "drop": -0.05328124999999995
+        },
+        "medmcqa": {
+          "ablated_margin": 2.265625,
+          "drop": -0.08984375
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.51125,
+          "drop": 0.06000000000000005
+        }
+      },
+      "L15H4": {
+        "medqa": {
+          "ablated_margin": 1.7721875,
+          "drop": 0.04718749999999994
+        },
+        "medmcqa": {
+          "ablated_margin": 2.07015625,
+          "drop": 0.10562499999999986
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.50125,
+          "drop": 0.06999999999999984
+        }
+      },
+      "L15H5": {
+        "medqa": {
+          "ablated_margin": 1.80265625,
+          "drop": 0.016718749999999893
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17921875,
+          "drop": -0.0034374999999999822
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5075,
+          "drop": 0.0637500000000002
+        }
+      },
+      "L15H6": {
+        "medqa": {
+          "ablated_margin": 1.8690625,
+          "drop": -0.04968750000000011
+        },
+        "medmcqa": {
+          "ablated_margin": 2.201875,
+          "drop": -0.026093749999999805
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.57375,
+          "drop": -0.0024999999999999467
+        }
+      },
+      "L15H7": {
+        "medqa": {
+          "ablated_margin": 1.88546875,
+          "drop": -0.06609375000000006
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2075,
+          "drop": -0.03171875000000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.625,
+          "drop": -0.053749999999999964
+        }
+      },
+      "L15H8": {
+        "medqa": {
+          "ablated_margin": 1.80046875,
+          "drop": 0.018906249999999902
+        },
+        "medmcqa": {
+          "ablated_margin": 2.25328125,
+          "drop": -0.07750000000000012
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.505,
+          "drop": 0.06625000000000014
+        }
+      },
+      "L15H9": {
+        "medqa": {
+          "ablated_margin": 1.77921875,
+          "drop": 0.04015624999999989
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19140625,
+          "drop": -0.015625
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.54375,
+          "drop": 0.027499999999999858
+        }
+      },
+      "L15H10": {
+        "medqa": {
+          "ablated_margin": 1.7809375,
+          "drop": 0.0384374999999999
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1071875,
+          "drop": 0.06859374999999979
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.43125,
+          "drop": 0.14000000000000012
+        }
+      },
+      "L15H11": {
+        "medqa": {
+          "ablated_margin": 1.8221875,
+          "drop": -0.0028125000000001066
+        },
+        "medmcqa": {
+          "ablated_margin": 2.12234375,
+          "drop": 0.053437499999999805
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.6175,
+          "drop": -0.046250000000000124
+        }
+      },
+      "L15H12": {
+        "medqa": {
+          "ablated_margin": 1.73921875,
+          "drop": 0.08015624999999993
+        },
+        "medmcqa": {
+          "ablated_margin": 2.135,
+          "drop": 0.04078125000000021
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.63125,
+          "drop": -0.06000000000000005
+        }
+      },
+      "L15H13": {
+        "medqa": {
+          "ablated_margin": 1.81609375,
+          "drop": 0.0032812499999999023
+        },
+        "medmcqa": {
+          "ablated_margin": 2.23390625,
+          "drop": -0.05812499999999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.46375,
+          "drop": 0.10749999999999993
+        }
+      },
+      "L15H14": {
+        "medqa": {
+          "ablated_margin": 1.7996875,
+          "drop": 0.019687499999999858
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11421875,
+          "drop": 0.061562499999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.50875,
+          "drop": 0.0625
+        }
+      },
+      "L15H15": {
+        "medqa": {
+          "ablated_margin": 1.834375,
+          "drop": -0.015000000000000124
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1590625,
+          "drop": 0.016718749999999893
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.61125,
+          "drop": -0.040000000000000036
+        }
+      },
+      "L15H16": {
+        "medqa": {
+          "ablated_margin": 1.79453125,
+          "drop": 0.024843750000000053
+        },
+        "medmcqa": {
+          "ablated_margin": 2.16671875,
+          "drop": 0.009062500000000195
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.52,
+          "drop": 0.05125000000000002
+        }
+      },
+      "L15H17": {
+        "medqa": {
+          "ablated_margin": 1.81171875,
+          "drop": 0.00765624999999992
+        },
+        "medmcqa": {
+          "ablated_margin": 2.198125,
+          "drop": -0.022343750000000107
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.52,
+          "drop": 0.05125000000000002
+        }
+      },
+      "L15H18": {
+        "medqa": {
+          "ablated_margin": 1.79625,
+          "drop": 0.023125000000000062
+        },
+        "medmcqa": {
+          "ablated_margin": 2.183125,
+          "drop": -0.007343749999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.49625,
+          "drop": 0.07500000000000018
+        }
+      },
+      "L15H19": {
+        "medqa": {
+          "ablated_margin": 1.788125,
+          "drop": 0.03125
+        },
+        "medmcqa": {
+          "ablated_margin": 2.085,
+          "drop": 0.09078125000000004
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.63625,
+          "drop": -0.06499999999999995
+        }
+      },
+      "L16H0": {
+        "medqa": {
+          "ablated_margin": 1.7515625,
+          "drop": 0.06781250000000005
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1815625,
+          "drop": -0.005781250000000071
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.425,
+          "drop": 0.1462500000000002
+        }
+      },
+      "L16H1": {
+        "medqa": {
+          "ablated_margin": 1.81,
+          "drop": 0.009374999999999911
+        },
+        "medmcqa": {
+          "ablated_margin": 2.15578125,
+          "drop": 0.020000000000000018
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.57375,
+          "drop": -0.0024999999999999467
+        }
+      },
+      "L16H2": {
+        "medqa": {
+          "ablated_margin": 1.810625,
+          "drop": 0.008750000000000036
+        },
+        "medmcqa": {
+          "ablated_margin": 2.154375,
+          "drop": 0.02140625000000007
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.395,
+          "drop": 0.17625000000000002
+        }
+      },
+      "L16H3": {
+        "medqa": {
+          "ablated_margin": 1.834375,
+          "drop": -0.015000000000000124
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19828125,
+          "drop": -0.022499999999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.505,
+          "drop": 0.06625000000000014
+        }
+      },
+      "L16H4": {
+        "medqa": {
+          "ablated_margin": 1.81828125,
+          "drop": 0.0010937499999998934
+        },
+        "medmcqa": {
+          "ablated_margin": 2.20453125,
+          "drop": -0.028750000000000053
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.75125,
+          "drop": -0.18000000000000016
+        }
+      },
+      "L16H5": {
+        "medqa": {
+          "ablated_margin": 1.71890625,
+          "drop": 0.10046874999999988
+        },
+        "medmcqa": {
+          "ablated_margin": 2.06296875,
+          "drop": 0.11281249999999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.12,
+          "drop": 0.45124999999999993
+        }
+      },
+      "L16H6": {
+        "medqa": {
+          "ablated_margin": 1.7846875,
+          "drop": 0.03468749999999998
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1740625,
+          "drop": 0.0017187500000002132
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.33625,
+          "drop": 0.23499999999999988
+        }
+      },
+      "L16H7": {
+        "medqa": {
+          "ablated_margin": 1.755,
+          "drop": 0.06437500000000007
+        },
+        "medmcqa": {
+          "ablated_margin": 1.9721875,
+          "drop": 0.20359375000000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.16625,
+          "drop": 0.40500000000000025
+        }
+      },
+      "L16H8": {
+        "medqa": {
+          "ablated_margin": 1.6934375,
+          "drop": 0.12593750000000004
+        },
+        "medmcqa": {
+          "ablated_margin": 1.9534375,
+          "drop": 0.22234375000000006
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.60625,
+          "drop": -0.03500000000000014
+        }
+      },
+      "L16H9": {
+        "medqa": {
+          "ablated_margin": 1.6765625,
+          "drop": 0.1428125
+        },
+        "medmcqa": {
+          "ablated_margin": 1.9678125,
+          "drop": 0.20796875000000004
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.8175,
+          "drop": -0.24624999999999986
+        }
+      },
+      "L16H10": {
+        "medqa": {
+          "ablated_margin": 1.76359375,
+          "drop": 0.05578124999999989
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1165625,
+          "drop": 0.059218749999999876
+        },
+        "pubmedqa": {
+          "ablated_margin": 1.94,
+          "drop": 0.6312500000000001
+        }
+      },
+      "L16H11": {
+        "medqa": {
+          "ablated_margin": 1.84328125,
+          "drop": -0.023906250000000018
+        },
+        "medmcqa": {
+          "ablated_margin": 2.22359375,
+          "drop": -0.047812500000000036
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.595,
+          "drop": -0.02375000000000016
+        }
+      },
+      "L16H12": {
+        "medqa": {
+          "ablated_margin": 1.870625,
+          "drop": -0.05125000000000002
+        },
+        "medmcqa": {
+          "ablated_margin": 2.24953125,
+          "drop": -0.07374999999999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.505,
+          "drop": 0.06625000000000014
+        }
+      },
+      "L16H13": {
+        "medqa": {
+          "ablated_margin": 1.85578125,
+          "drop": -0.03640624999999997
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19921875,
+          "drop": -0.0234375
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.64125,
+          "drop": -0.06999999999999984
+        }
+      },
+      "L16H14": {
+        "medqa": {
+          "ablated_margin": 1.8134375,
+          "drop": 0.005937499999999929
+        },
+        "medmcqa": {
+          "ablated_margin": 2.16328125,
+          "drop": 0.012500000000000178
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.55375,
+          "drop": 0.01750000000000007
+        }
+      },
+      "L16H15": {
+        "medqa": {
+          "ablated_margin": 1.92265625,
+          "drop": -0.10328124999999999
+        },
+        "medmcqa": {
+          "ablated_margin": 2.36015625,
+          "drop": -0.18437500000000018
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.45125,
+          "drop": 0.1200000000000001
+        }
+      },
+      "L16H16": {
+        "medqa": {
+          "ablated_margin": 1.78171875,
+          "drop": 0.03765624999999995
+        },
+        "medmcqa": {
+          "ablated_margin": 2.07140625,
+          "drop": 0.1043750000000001
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.54625,
+          "drop": 0.02499999999999991
+        }
+      },
+      "L16H17": {
+        "medqa": {
+          "ablated_margin": 1.8178125,
+          "drop": 0.0015624999999999112
+        },
+        "medmcqa": {
+          "ablated_margin": 2.194375,
+          "drop": -0.018593749999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.59125,
+          "drop": -0.020000000000000018
+        }
+      },
+      "L16H18": {
+        "medqa": {
+          "ablated_margin": 1.82734375,
+          "drop": -0.00796875000000008
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2178125,
+          "drop": -0.042031249999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.44875,
+          "drop": 0.12250000000000005
+        }
+      },
+      "L16H19": {
+        "medqa": {
+          "ablated_margin": 1.7815625,
+          "drop": 0.03781250000000003
+        },
+        "medmcqa": {
+          "ablated_margin": 2.15015625,
+          "drop": 0.025624999999999787
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.615,
+          "drop": -0.04375000000000018
+        }
+      },
+      "L17H0": {
+        "medqa": {
+          "ablated_margin": 1.8434375,
+          "drop": -0.024062500000000098
+        },
+        "medmcqa": {
+          "ablated_margin": 2.16890625,
+          "drop": 0.0068749999999999645
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5575,
+          "drop": 0.013749999999999929
+        }
+      },
+      "L17H1": {
+        "medqa": {
+          "ablated_margin": 1.79515625,
+          "drop": 0.024218749999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.12515625,
+          "drop": 0.05062500000000014
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.63375,
+          "drop": -0.0625
+        }
+      },
+      "L17H2": {
+        "medqa": {
+          "ablated_margin": 1.8190625,
+          "drop": 0.00031249999999993783
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2465625,
+          "drop": -0.07078125000000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.62375,
+          "drop": -0.05249999999999977
+        }
+      },
+      "L17H3": {
+        "medqa": {
+          "ablated_margin": 1.895625,
+          "drop": -0.07624999999999993
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17546875,
+          "drop": 0.00031250000000015987
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.385,
+          "drop": 0.18625000000000025
+        }
+      },
+      "L17H4": {
+        "medqa": {
+          "ablated_margin": 1.81828125,
+          "drop": 0.0010937499999998934
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18890625,
+          "drop": -0.013125000000000053
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.49125,
+          "drop": 0.08000000000000007
+        }
+      },
+      "L17H5": {
+        "medqa": {
+          "ablated_margin": 1.683125,
+          "drop": 0.13624999999999998
+        },
+        "medmcqa": {
+          "ablated_margin": 2.03890625,
+          "drop": 0.13687499999999986
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.3175,
+          "drop": 0.25375000000000014
+        }
+      },
+      "L17H6": {
+        "medqa": {
+          "ablated_margin": 1.84609375,
+          "drop": -0.026718750000000124
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2290625,
+          "drop": -0.05328124999999995
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.56375,
+          "drop": 0.00749999999999984
+        }
+      },
+      "L17H7": {
+        "medqa": {
+          "ablated_margin": 1.8253125,
+          "drop": -0.005937499999999929
+        },
+        "medmcqa": {
+          "ablated_margin": 2.23109375,
+          "drop": -0.055312499999999876
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.58875,
+          "drop": -0.01750000000000007
+        }
+      },
+      "L17H8": {
+        "medqa": {
+          "ablated_margin": 1.718125,
+          "drop": 0.10125000000000006
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1,
+          "drop": 0.07578124999999991
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5575,
+          "drop": 0.013749999999999929
+        }
+      },
+      "L17H9": {
+        "medqa": {
+          "ablated_margin": 1.86234375,
+          "drop": -0.04296875
+        },
+        "medmcqa": {
+          "ablated_margin": 2.21703125,
+          "drop": -0.04124999999999979
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.48625,
+          "drop": 0.08499999999999996
+        }
+      },
+      "L17H10": {
+        "medqa": {
+          "ablated_margin": 1.884375,
+          "drop": -0.06499999999999995
+        },
+        "medmcqa": {
+          "ablated_margin": 2.14484375,
+          "drop": 0.03093749999999984
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.45125,
+          "drop": 0.1200000000000001
+        }
+      },
+      "L17H11": {
+        "medqa": {
+          "ablated_margin": 1.75640625,
+          "drop": 0.06296875000000002
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11015625,
+          "drop": 0.06562499999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.39875,
+          "drop": 0.17249999999999988
+        }
+      },
+      "L17H12": {
+        "medqa": {
+          "ablated_margin": 1.73328125,
+          "drop": 0.08609374999999986
+        },
+        "medmcqa": {
+          "ablated_margin": 2.02296875,
+          "drop": 0.15281250000000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.2875,
+          "drop": 0.28374999999999995
+        }
+      },
+      "L17H13": {
+        "medqa": {
+          "ablated_margin": 1.79125,
+          "drop": 0.028124999999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.13359375,
+          "drop": 0.04218749999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.295,
+          "drop": 0.2762500000000001
+        }
+      },
+      "L17H14": {
+        "medqa": {
+          "ablated_margin": 1.87890625,
+          "drop": -0.059531250000000036
+        },
+        "medmcqa": {
+          "ablated_margin": 2.30328125,
+          "drop": -0.12749999999999995
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.47125,
+          "drop": 0.10000000000000009
+        }
+      },
+      "L17H15": {
+        "medqa": {
+          "ablated_margin": 1.834375,
+          "drop": -0.015000000000000124
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17671875,
+          "drop": -0.0009375000000000355
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.67375,
+          "drop": -0.10250000000000004
+        }
+      },
+      "L17H16": {
+        "medqa": {
+          "ablated_margin": 1.89421875,
+          "drop": -0.0748437500000001
+        },
+        "medmcqa": {
+          "ablated_margin": 2.21390625,
+          "drop": -0.038124999999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.82875,
+          "drop": -0.25749999999999984
+        }
+      },
+      "L17H17": {
+        "medqa": {
+          "ablated_margin": 1.789375,
+          "drop": 0.030000000000000027
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11375,
+          "drop": 0.06203124999999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.21,
+          "drop": 0.36125000000000007
+        }
+      },
+      "L17H18": {
+        "medqa": {
+          "ablated_margin": 1.7353125,
+          "drop": 0.08406249999999993
+        },
+        "medmcqa": {
+          "ablated_margin": 2.145625,
+          "drop": 0.030156250000000107
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.76125,
+          "drop": -0.18999999999999995
+        }
+      },
+      "L17H19": {
+        "medqa": {
+          "ablated_margin": 1.82859375,
+          "drop": -0.009218750000000053
+        },
+        "medmcqa": {
+          "ablated_margin": 2.16953125,
+          "drop": 0.006250000000000089
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4225,
+          "drop": 0.14875000000000016
+        }
+      },
+      "L18H0": {
+        "medqa": {
+          "ablated_margin": 1.7853125,
+          "drop": 0.034062499999999885
+        },
+        "medmcqa": {
+          "ablated_margin": 2.0871875,
+          "drop": 0.0885937499999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.2675,
+          "drop": 0.30374999999999996
+        }
+      },
+      "L18H1": {
+        "medqa": {
+          "ablated_margin": 1.807890625,
+          "drop": 0.011484374999999991
+        },
+        "medmcqa": {
+          "ablated_margin": 2.0278125,
+          "drop": 0.14796874999999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.25125,
+          "drop": 0.31999999999999984
+        }
+      },
+      "L18H2": {
+        "medqa": {
+          "ablated_margin": 1.7678125,
+          "drop": 0.051562499999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.16203125,
+          "drop": 0.013749999999999929
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.55125,
+          "drop": 0.020000000000000018
+        }
+      },
+      "L18H3": {
+        "medqa": {
+          "ablated_margin": 1.7303125,
+          "drop": 0.08906250000000004
+        },
+        "medmcqa": {
+          "ablated_margin": 2.06734375,
+          "drop": 0.10843749999999996
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.62125,
+          "drop": -0.04999999999999982
+        }
+      },
+      "L18H4": {
+        "medqa": {
+          "ablated_margin": 1.7971875,
+          "drop": 0.022187500000000027
+        },
+        "medmcqa": {
+          "ablated_margin": 2.21125,
+          "drop": -0.03546875000000016
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.60375,
+          "drop": -0.03249999999999975
+        }
+      },
+      "L18H5": {
+        "medqa": {
+          "ablated_margin": 1.8040625,
+          "drop": 0.015312500000000062
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1696875,
+          "drop": 0.006093749999999787
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.465,
+          "drop": 0.10625000000000018
+        }
+      },
+      "L18H6": {
+        "medqa": {
+          "ablated_margin": 1.77078125,
+          "drop": 0.04859374999999999
+        },
+        "medmcqa": {
+          "ablated_margin": 2.0246875,
+          "drop": 0.1510937499999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.50125,
+          "drop": 0.06999999999999984
+        }
+      },
+      "L18H7": {
+        "medqa": {
+          "ablated_margin": 1.79171875,
+          "drop": 0.027656249999999938
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1621875,
+          "drop": 0.013593750000000071
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.53375,
+          "drop": 0.03750000000000009
+        }
+      },
+      "L18H8": {
+        "medqa": {
+          "ablated_margin": 1.7709375,
+          "drop": 0.04843749999999991
+        },
+        "medmcqa": {
+          "ablated_margin": 2.193125,
+          "drop": -0.017343750000000213
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.3775,
+          "drop": 0.1937500000000001
+        }
+      },
+      "L18H9": {
+        "medqa": {
+          "ablated_margin": 1.82703125,
+          "drop": -0.007656250000000142
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1975,
+          "drop": -0.021718749999999787
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.53875,
+          "drop": 0.032500000000000195
+        }
+      },
+      "L18H10": {
+        "medqa": {
+          "ablated_margin": 1.77421875,
+          "drop": 0.04515625000000001
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11140625,
+          "drop": 0.06437500000000007
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7325,
+          "drop": -0.1612499999999999
+        }
+      },
+      "L18H11": {
+        "medqa": {
+          "ablated_margin": 1.854375,
+          "drop": -0.03500000000000014
+        },
+        "medmcqa": {
+          "ablated_margin": 2.23171875,
+          "drop": -0.055937500000000195
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.47,
+          "drop": 0.10124999999999984
+        }
+      },
+      "L18H12": {
+        "medqa": {
+          "ablated_margin": 1.8159375,
+          "drop": 0.0034374999999999822
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2071875,
+          "drop": -0.03140624999999986
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.58125,
+          "drop": -0.009999999999999787
+        }
+      },
+      "L18H13": {
+        "medqa": {
+          "ablated_margin": 1.754921875,
+          "drop": 0.064453125
+        },
+        "medmcqa": {
+          "ablated_margin": 2.0334375,
+          "drop": 0.1423437500000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.0325,
+          "drop": 0.5387499999999998
+        }
+      },
+      "L18H14": {
+        "medqa": {
+          "ablated_margin": 1.83203125,
+          "drop": -0.012656250000000036
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2240625,
+          "drop": -0.04828125000000005
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7075,
+          "drop": -0.13624999999999998
+        }
+      },
+      "L18H15": {
+        "medqa": {
+          "ablated_margin": 1.82234375,
+          "drop": -0.0029687499999999645
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1871875,
+          "drop": -0.01140624999999984
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.49375,
+          "drop": 0.07750000000000012
+        }
+      },
+      "L18H16": {
+        "medqa": {
+          "ablated_margin": 1.77234375,
+          "drop": 0.04703124999999986
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17546875,
+          "drop": 0.00031250000000015987
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.56125,
+          "drop": 0.010000000000000231
+        }
+      },
+      "L18H17": {
+        "medqa": {
+          "ablated_margin": 1.83609375,
+          "drop": -0.016718750000000115
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19765625,
+          "drop": -0.02187500000000009
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.34625,
+          "drop": 0.2250000000000001
+        }
+      },
+      "L18H18": {
+        "medqa": {
+          "ablated_margin": 1.8234375,
+          "drop": -0.00406250000000008
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1603125,
+          "drop": 0.015468750000000142
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.6125,
+          "drop": -0.04124999999999979
+        }
+      },
+      "L18H19": {
+        "medqa": {
+          "ablated_margin": 1.7575,
+          "drop": 0.0618749999999999
+        },
+        "medmcqa": {
+          "ablated_margin": 2.13078125,
+          "drop": 0.04499999999999993
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.415,
+          "drop": 0.15625
+        }
+      },
+      "L19H0": {
+        "medqa": {
+          "ablated_margin": 1.81859375,
+          "drop": 0.0007812499999999556
+        },
+        "medmcqa": {
+          "ablated_margin": 2.21125,
+          "drop": -0.03546875000000016
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5025,
+          "drop": 0.06875000000000009
+        }
+      },
+      "L19H1": {
+        "medqa": {
+          "ablated_margin": 1.81765625,
+          "drop": 0.0017187499999999911
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19578125,
+          "drop": -0.020000000000000018
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.52125,
+          "drop": 0.04999999999999982
+        }
+      },
+      "L19H2": {
+        "medqa": {
+          "ablated_margin": 1.84984375,
+          "drop": -0.030468750000000044
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1959375,
+          "drop": -0.020156249999999876
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.43125,
+          "drop": 0.14000000000000012
+        }
+      },
+      "L19H3": {
+        "medqa": {
+          "ablated_margin": 1.854375,
+          "drop": -0.03500000000000014
+        },
+        "medmcqa": {
+          "ablated_margin": 2.26296875,
+          "drop": -0.0871875000000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.69625,
+          "drop": -0.125
+        }
+      },
+      "L19H4": {
+        "medqa": {
+          "ablated_margin": 1.80375,
+          "drop": 0.015625
+        },
+        "medmcqa": {
+          "ablated_margin": 2.08390625,
+          "drop": 0.09187499999999993
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.33375,
+          "drop": 0.23749999999999982
+        }
+      },
+      "L19H5": {
+        "medqa": {
+          "ablated_margin": 1.855625,
+          "drop": -0.036250000000000115
+        },
+        "medmcqa": {
+          "ablated_margin": 2.15296875,
+          "drop": 0.022812500000000124
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.625,
+          "drop": -0.053749999999999964
+        }
+      },
+      "L19H6": {
+        "medqa": {
+          "ablated_margin": 1.80453125,
+          "drop": 0.014843750000000044
+        },
+        "medmcqa": {
+          "ablated_margin": 2.14046875,
+          "drop": 0.03531249999999986
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.535,
+          "drop": 0.03624999999999989
+        }
+      },
+      "L19H7": {
+        "medqa": {
+          "ablated_margin": 1.8046875,
+          "drop": 0.014687499999999964
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1909375,
+          "drop": -0.015156249999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7325,
+          "drop": -0.1612499999999999
+        }
+      },
+      "L19H8": {
+        "medqa": {
+          "ablated_margin": 1.75140625,
+          "drop": 0.06796874999999991
+        },
+        "medmcqa": {
+          "ablated_margin": 2.118125,
+          "drop": 0.057656249999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.62625,
+          "drop": -0.05500000000000016
+        }
+      },
+      "L19H9": {
+        "medqa": {
+          "ablated_margin": 1.78140625,
+          "drop": 0.037968749999999885
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19703125,
+          "drop": -0.021250000000000213
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.575,
+          "drop": -0.003750000000000142
+        }
+      },
+      "L19H10": {
+        "medqa": {
+          "ablated_margin": 1.79328125,
+          "drop": 0.026093750000000027
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1259375,
+          "drop": 0.049843749999999964
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.385,
+          "drop": 0.18625000000000025
+        }
+      },
+      "L19H11": {
+        "medqa": {
+          "ablated_margin": 1.8146875,
+          "drop": 0.004687499999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.20921875,
+          "drop": -0.03343749999999979
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.46,
+          "drop": 0.11125000000000007
+        }
+      },
+      "L19H12": {
+        "medqa": {
+          "ablated_margin": 1.80265625,
+          "drop": 0.016718749999999893
+        },
+        "medmcqa": {
+          "ablated_margin": 2.18375,
+          "drop": -0.007968749999999858
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.43375,
+          "drop": 0.13750000000000018
+        }
+      },
+      "L19H13": {
+        "medqa": {
+          "ablated_margin": 1.795,
+          "drop": 0.024375000000000036
+        },
+        "medmcqa": {
+          "ablated_margin": 2.14921875,
+          "drop": 0.026562499999999822
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.555,
+          "drop": 0.016249999999999876
+        }
+      },
+      "L19H14": {
+        "medqa": {
+          "ablated_margin": 1.7196875,
+          "drop": 0.09968749999999993
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11265625,
+          "drop": 0.06312499999999988
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.77875,
+          "drop": -0.20750000000000002
+        }
+      },
+      "L19H15": {
+        "medqa": {
+          "ablated_margin": 1.8259375,
+          "drop": -0.006562500000000027
+        },
+        "medmcqa": {
+          "ablated_margin": 2.19328125,
+          "drop": -0.01750000000000007
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4275,
+          "drop": 0.14374999999999982
+        }
+      },
+      "L19H16": {
+        "medqa": {
+          "ablated_margin": 1.82875,
+          "drop": -0.009375000000000133
+        },
+        "medmcqa": {
+          "ablated_margin": 2.02359375,
+          "drop": 0.15218750000000014
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.905,
+          "drop": -0.33374999999999977
+        }
+      },
+      "L19H17": {
+        "medqa": {
+          "ablated_margin": 1.8221875,
+          "drop": -0.0028125000000001066
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1096875,
+          "drop": 0.06609374999999984
+        },
+        "pubmedqa": {
+          "ablated_margin": 1.8225,
+          "drop": 0.74875
+        }
+      },
+      "L19H18": {
+        "medqa": {
+          "ablated_margin": 1.6865625,
+          "drop": 0.1328125
+        },
+        "medmcqa": {
+          "ablated_margin": 2.0203125,
+          "drop": 0.15546874999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.205,
+          "drop": 0.36624999999999996
+        }
+      },
+      "L19H19": {
+        "medqa": {
+          "ablated_margin": 1.8046875,
+          "drop": 0.014687499999999964
+        },
+        "medmcqa": {
+          "ablated_margin": 2.06765625,
+          "drop": 0.1081249999999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4425,
+          "drop": 0.12875000000000014
+        }
+      },
+      "L20H0": {
+        "medqa": {
+          "ablated_margin": 1.8921875,
+          "drop": -0.07281249999999995
+        },
+        "medmcqa": {
+          "ablated_margin": 2.216875,
+          "drop": -0.04109374999999993
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.805,
+          "drop": -0.23375000000000012
+        }
+      },
+      "L20H1": {
+        "medqa": {
+          "ablated_margin": 1.77625,
+          "drop": 0.04312499999999986
+        },
+        "medmcqa": {
+          "ablated_margin": 2.12703125,
+          "drop": 0.04875000000000007
+        },
+        "pubmedqa": {
+          "ablated_margin": 1.6675,
+          "drop": 0.90375
+        }
+      },
+      "L20H2": {
+        "medqa": {
+          "ablated_margin": 1.75890625,
+          "drop": 0.06046875000000007
+        },
+        "medmcqa": {
+          "ablated_margin": 2.0921875,
+          "drop": 0.08359374999999991
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4325,
+          "drop": 0.13874999999999993
+        }
+      },
+      "L20H3": {
+        "medqa": {
+          "ablated_margin": 1.80265625,
+          "drop": 0.016718749999999893
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1946875,
+          "drop": -0.018906250000000124
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.81,
+          "drop": -0.23875000000000002
+        }
+      },
+      "L20H4": {
+        "medqa": {
+          "ablated_margin": 1.795625,
+          "drop": 0.023749999999999938
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17484375,
+          "drop": 0.0009375000000000355
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.3825,
+          "drop": 0.1887500000000002
+        }
+      },
+      "L20H5": {
+        "medqa": {
+          "ablated_margin": 1.43796875,
+          "drop": 0.38140624999999995
+        },
+        "medmcqa": {
+          "ablated_margin": 1.9903125,
+          "drop": 0.18546875000000007
+        },
+        "pubmedqa": {
+          "ablated_margin": 1.6425,
+          "drop": 0.92875
+        }
+      },
+      "L20H6": {
+        "medqa": {
+          "ablated_margin": 1.6784375,
+          "drop": 0.14093749999999994
+        },
+        "medmcqa": {
+          "ablated_margin": 1.915625,
+          "drop": 0.2601562500000001
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.82,
+          "drop": -0.2487499999999998
+        }
+      },
+      "L20H7": {
+        "medqa": {
+          "ablated_margin": 1.82859375,
+          "drop": -0.009218750000000053
+        },
+        "medmcqa": {
+          "ablated_margin": 1.92578125,
+          "drop": 0.25
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.7875,
+          "drop": -0.21625000000000005
+        }
+      },
+      "L20H8": {
+        "medqa": {
+          "ablated_margin": 1.77890625,
+          "drop": 0.04046875000000005
+        },
+        "medmcqa": {
+          "ablated_margin": 2.17515625,
+          "drop": 0.0006249999999998757
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.31125,
+          "drop": 0.26000000000000023
+        }
+      },
+      "L20H9": {
+        "medqa": {
+          "ablated_margin": 1.79359375,
+          "drop": 0.025781249999999867
+        },
+        "medmcqa": {
+          "ablated_margin": 2.11875,
+          "drop": 0.05703125000000009
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.3075,
+          "drop": 0.26374999999999993
+        }
+      },
+      "L20H10": {
+        "medqa": {
+          "ablated_margin": 1.8115625,
+          "drop": 0.0078125
+        },
+        "medmcqa": {
+          "ablated_margin": 2.20375,
+          "drop": -0.027968749999999876
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.555,
+          "drop": 0.016249999999999876
+        }
+      },
+      "L20H11": {
+        "medqa": {
+          "ablated_margin": 1.659453125,
+          "drop": 0.159921875
+        },
+        "medmcqa": {
+          "ablated_margin": 1.9696875,
+          "drop": 0.20609374999999996
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.35,
+          "drop": 0.22124999999999995
+        }
+      },
+      "L20H12": {
+        "medqa": {
+          "ablated_margin": 1.830625,
+          "drop": -0.011249999999999982
+        },
+        "medmcqa": {
+          "ablated_margin": 2.07625,
+          "drop": 0.09953125000000007
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.345625,
+          "drop": 0.22562499999999996
+        }
+      },
+      "L20H13": {
+        "medqa": {
+          "ablated_margin": 1.8278125,
+          "drop": -0.008437500000000098
+        },
+        "medmcqa": {
+          "ablated_margin": 2.23703125,
+          "drop": -0.061249999999999805
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.70375,
+          "drop": -0.13249999999999984
+        }
+      },
+      "L20H14": {
+        "medqa": {
+          "ablated_margin": 1.84734375,
+          "drop": -0.027968750000000098
+        },
+        "medmcqa": {
+          "ablated_margin": 2.15390625,
+          "drop": 0.02187500000000009
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.53625,
+          "drop": 0.03500000000000014
+        }
+      },
+      "L20H15": {
+        "medqa": {
+          "ablated_margin": 1.8034375,
+          "drop": 0.015937499999999938
+        },
+        "medmcqa": {
+          "ablated_margin": 2.12453125,
+          "drop": 0.05125000000000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.62125,
+          "drop": -0.04999999999999982
+        }
+      },
+      "L20H16": {
+        "medqa": {
+          "ablated_margin": 1.755625,
+          "drop": 0.06374999999999997
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1128125,
+          "drop": 0.06296875000000002
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.30875,
+          "drop": 0.2625000000000002
+        }
+      },
+      "L20H17": {
+        "medqa": {
+          "ablated_margin": 1.85265625,
+          "drop": -0.03328124999999993
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2184375,
+          "drop": -0.04265624999999984
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.76875,
+          "drop": -0.1974999999999998
+        }
+      },
+      "L20H18": {
+        "medqa": {
+          "ablated_margin": 1.7496875,
+          "drop": 0.0696874999999999
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1546875,
+          "drop": 0.02109374999999991
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.18125,
+          "drop": 0.3900000000000001
+        }
+      },
+      "L20H19": {
+        "medqa": {
+          "ablated_margin": 1.868125,
+          "drop": -0.04875000000000007
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1328125,
+          "drop": 0.04296875
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.21,
+          "drop": 0.36125000000000007
+        }
+      },
+      "L21H0": {
+        "medqa": {
+          "ablated_margin": 1.769375,
+          "drop": 0.050000000000000044
+        },
+        "medmcqa": {
+          "ablated_margin": 2.159375,
+          "drop": 0.016406250000000178
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.56375,
+          "drop": 0.00749999999999984
+        }
+      },
+      "L21H1": {
+        "medqa": {
+          "ablated_margin": 1.10015625,
+          "drop": 0.71921875
+        },
+        "medmcqa": {
+          "ablated_margin": 1.55203125,
+          "drop": 0.62375
+        },
+        "pubmedqa": {
+          "ablated_margin": 1.86625,
+          "drop": 0.7050000000000001
+        }
+      },
+      "L21H2": {
+        "medqa": {
+          "ablated_margin": 1.86328125,
+          "drop": -0.043906250000000036
+        },
+        "medmcqa": {
+          "ablated_margin": 2.26125,
+          "drop": -0.08546874999999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.69875,
+          "drop": -0.12749999999999995
+        }
+      },
+      "L21H3": {
+        "medqa": {
+          "ablated_margin": 1.79734375,
+          "drop": 0.022031249999999947
+        },
+        "medmcqa": {
+          "ablated_margin": 2.15296875,
+          "drop": 0.022812500000000124
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.59875,
+          "drop": -0.027499999999999858
+        }
+      },
+      "L21H4": {
+        "medqa": {
+          "ablated_margin": 1.8378125,
+          "drop": -0.018437500000000107
+        },
+        "medmcqa": {
+          "ablated_margin": 2.13171875,
+          "drop": 0.04406249999999989
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.41875,
+          "drop": 0.15249999999999986
+        }
+      },
+      "L21H5": {
+        "medqa": {
+          "ablated_margin": 1.814375,
+          "drop": 0.004999999999999893
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2815625,
+          "drop": -0.10578125000000016
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.89375,
+          "drop": -0.3224999999999998
+        }
+      },
+      "L21H6": {
+        "medqa": {
+          "ablated_margin": 1.7403125,
+          "drop": 0.07906250000000004
+        },
+        "medmcqa": {
+          "ablated_margin": 2.068125,
+          "drop": 0.10765624999999979
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.2325,
+          "drop": 0.3387500000000001
+        }
+      },
+      "L21H7": {
+        "medqa": {
+          "ablated_margin": 1.86828125,
+          "drop": -0.04890624999999993
+        },
+        "medmcqa": {
+          "ablated_margin": 2.21234375,
+          "drop": -0.03656250000000005
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.52375,
+          "drop": 0.047499999999999876
+        }
+      },
+      "L21H8": {
+        "medqa": {
+          "ablated_margin": 1.76015625,
+          "drop": 0.059218749999999876
+        },
+        "medmcqa": {
+          "ablated_margin": 1.98078125,
+          "drop": 0.19500000000000006
+        },
+        "pubmedqa": {
+          "ablated_margin": 1.81375,
+          "drop": 0.7575000000000001
+        }
+      },
+      "L21H9": {
+        "medqa": {
+          "ablated_margin": 1.7765625,
+          "drop": 0.04281249999999992
+        },
+        "medmcqa": {
+          "ablated_margin": 2.07890625,
+          "drop": 0.09687499999999982
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.54875,
+          "drop": 0.022499999999999964
+        }
+      },
+      "L21H10": {
+        "medqa": {
+          "ablated_margin": 1.87921875,
+          "drop": -0.05984374999999997
+        },
+        "medmcqa": {
+          "ablated_margin": 2.2878125,
+          "drop": -0.1120312499999998
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.78875,
+          "drop": -0.2174999999999998
+        }
+      },
+      "L21H11": {
+        "medqa": {
+          "ablated_margin": 1.89390625,
+          "drop": -0.07453124999999994
+        },
+        "medmcqa": {
+          "ablated_margin": 2.26546875,
+          "drop": -0.08968750000000014
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.61625,
+          "drop": -0.04499999999999993
+        }
+      },
+      "L21H12": {
+        "medqa": {
+          "ablated_margin": 1.6921875,
+          "drop": 0.1271875
+        },
+        "medmcqa": {
+          "ablated_margin": 2.05609375,
+          "drop": 0.11968749999999995
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.25,
+          "drop": 0.32125000000000004
+        }
+      },
+      "L21H13": {
+        "medqa": {
+          "ablated_margin": 1.746875,
+          "drop": 0.07250000000000001
+        },
+        "medmcqa": {
+          "ablated_margin": 2.09125,
+          "drop": 0.08453124999999995
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.5075,
+          "drop": 0.0637500000000002
+        }
+      },
+      "L21H14": {
+        "medqa": {
+          "ablated_margin": 1.75,
+          "drop": 0.06937499999999996
+        },
+        "medmcqa": {
+          "ablated_margin": 2.12890625,
+          "drop": 0.046875
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.4525,
+          "drop": 0.11874999999999991
+        }
+      },
+      "L21H15": {
+        "medqa": {
+          "ablated_margin": 1.85921875,
+          "drop": -0.039843749999999956
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1790625,
+          "drop": -0.0032812500000001243
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.3275,
+          "drop": 0.2437499999999999
+        }
+      },
+      "L21H16": {
+        "medqa": {
+          "ablated_margin": 1.7503125,
+          "drop": 0.06906250000000003
+        },
+        "medmcqa": {
+          "ablated_margin": 2.1265625,
+          "drop": 0.04921875000000009
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.505,
+          "drop": 0.06625000000000014
+        }
+      },
+      "L21H17": {
+        "medqa": {
+          "ablated_margin": 1.840625,
+          "drop": -0.02124999999999999
+        },
+        "medmcqa": {
+          "ablated_margin": 2.20765625,
+          "drop": -0.031874999999999876
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.60125,
+          "drop": -0.029999999999999805
+        }
+      },
+      "L21H18": {
+        "medqa": {
+          "ablated_margin": 1.82046875,
+          "drop": -0.0010937500000001155
+        },
+        "medmcqa": {
+          "ablated_margin": 2.174375,
+          "drop": 0.0014062500000000533
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.55875,
+          "drop": 0.012500000000000178
+        }
+      },
+      "L21H19": {
+        "medqa": {
+          "ablated_margin": 1.8403125,
+          "drop": -0.020937500000000053
+        },
+        "medmcqa": {
+          "ablated_margin": 2.14875,
+          "drop": 0.02703124999999984
+        },
+        "pubmedqa": {
+          "ablated_margin": 2.62,
+          "drop": -0.04875000000000007
+        }
+      }
+    }
+  },
+  "exp3_coablation": {
+    "baseline_margin": 1.858203125,
+    "head_only_margin": 1.95234375,
+    "anchor_only_margin": 1.584375,
+    "joint_margin": 1.55615234375,
+    "head_drop": -0.09414062500000009,
+    "anchor_drop": 0.27382812499999987,
+    "joint_drop": 0.30205078124999996,
+    "expected_additive": 0.17968749999999978,
+    "synergy": 0.12236328125000018,
+    "synergy_ratio": 0.6809782604905879,
+    "interpretation": "SYNERGISTIC (same circuit)"
+  }
+}

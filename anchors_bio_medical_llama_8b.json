@@ -1,0 +1,413 @@
+{
+  "metadata": {
+    "timestamp": "2026-05-15T20:10:55.461257",
+    "model_name": "/workspace/biomedical_llama3",
+    "config": {
+      "model_name": "/workspace/biomedical_llama3",
+      "middle_layers": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "seed": 42,
+      "calib_size": 400,
+      "val_size": 200,
+      "test_size": 300,
+      "stage1_topk": 64,
+      "stage1_eval_pairs": 80,
+      "stage2_eval_pairs": 400,
+      "random_baseline_cols": 32,
+      "z_threshold": 4.0,
+      "max_anchors": 64,
+      "k_values": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64
+      ],
+      "n_random_trials": 30,
+      "ablation_eval_pairs": 200,
+      "ablation_test_size": 300,
+      "discovery_file": "anchors_bio_medical_llama_8b.json",
+      "ablation_file": "ablation_bio_medical_llama_8b.json",
+      "log_file": "experiment_bio_medical_llama_8b.log",
+      "intervention_type": "column_crush_1bit"
+    },
+    "dtype": "torch.bfloat16",
+    "prompt_template_hash": "5136cb018ebf2ba2",
+    "intervention_type": "column_crush_1bit",
+    "selection_rule": "z_score(val) > 4.0"
+  },
+  "layer_stats": {
+    "9": {
+      "mu_rand": 0.006768798824850819,
+      "sigma_rand": 0.00730932877704977,
+      "n_survivors": 32,
+      "n_anchors": 1,
+      "elapsed_sec": 795.4787735939026
+    },
+    "10": {
+      "mu_rand": 0.006610107404867449,
+      "sigma_rand": 0.005059571475348372,
+      "n_survivors": 28,
+      "n_anchors": 1,
+      "elapsed_sec": 757.9708154201508
+    },
+    "11": {
+      "mu_rand": 0.005017089878492698,
+      "sigma_rand": 0.0038290209925598965,
+      "n_survivors": 32,
+      "n_anchors": 1,
+      "elapsed_sec": 795.7161500453949
+    },
+    "12": {
+      "mu_rand": 0.0050903320311590505,
+      "sigma_rand": 0.004523639855295009,
+      "n_survivors": 32,
+      "n_anchors": 3,
+      "elapsed_sec": 795.6635475158691
+    },
+    "13": {
+      "mu_rand": 0.00527954102244621,
+      "sigma_rand": 0.0037965191806876193,
+      "n_survivors": 32,
+      "n_anchors": 3,
+      "elapsed_sec": 795.672735452652
+    },
+    "14": {
+      "mu_rand": 0.0030578613245779707,
+      "sigma_rand": 0.004242882972684194,
+      "n_survivors": 32,
+      "n_anchors": 4,
+      "elapsed_sec": 795.4584414958954
+    },
+    "15": {
+      "mu_rand": 0.0037719726656177954,
+      "sigma_rand": 0.004828170189492723,
+      "n_survivors": 27,
+      "n_anchors": 1,
+      "elapsed_sec": 748.7749292850494
+    },
+    "16": {
+      "mu_rand": 0.005340576168237021,
+      "sigma_rand": 0.004424434235984988,
+      "n_survivors": 31,
+      "n_anchors": 0,
+      "elapsed_sec": 786.7781844139099
+    },
+    "17": {
+      "mu_rand": 0.004663085908759967,
+      "sigma_rand": 0.003647349796434393,
+      "n_survivors": 32,
+      "n_anchors": 1,
+      "elapsed_sec": 796.07359623909
+    },
+    "18": {
+      "mu_rand": 0.004266357417236577,
+      "sigma_rand": 0.0035443667888340772,
+      "n_survivors": 32,
+      "n_anchors": 4,
+      "elapsed_sec": 795.9271328449249
+    },
+    "19": {
+      "mu_rand": 0.004589843774738256,
+      "sigma_rand": 0.0027474228507189578,
+      "n_survivors": 30,
+      "n_anchors": 3,
+      "elapsed_sec": 777.0686011314392
+    },
+    "20": {
+      "mu_rand": 0.0048217773496617156,
+      "sigma_rand": 0.0025458318969984748,
+      "n_survivors": 32,
+      "n_anchors": 3,
+      "elapsed_sec": 796.1734223365784
+    },
+    "21": {
+      "mu_rand": 0.006365966799421585,
+      "sigma_rand": 0.002934102858688764,
+      "n_survivors": 29,
+      "n_anchors": 2,
+      "elapsed_sec": 767.8190839290619
+    },
+    "22": {
+      "mu_rand": 0.0038085937612777343,
+      "sigma_rand": 0.0038946360583624814,
+      "n_survivors": 32,
+      "n_anchors": 0,
+      "elapsed_sec": 795.3657033443451
+    },
+    "23": {
+      "mu_rand": 0.00371704102417425,
+      "sigma_rand": 0.003683364255506981,
+      "n_survivors": 32,
+      "n_anchors": 4,
+      "elapsed_sec": 795.662603855133
+    }
+  },
+  "anchors": [
+    {
+      "layer": 9,
+      "column": 4255,
+      "drop_calib": 0.17070312798023224,
+      "drop_val": 0.20668579638004303,
+      "z_score": 27.350900492244477,
+      "p_value": 0.0
+    },
+    {
+      "layer": 10,
+      "column": 11570,
+      "drop_calib": 0.24824218451976776,
+      "drop_val": 0.19031675159931183,
+      "z_score": 36.30866408407732,
+      "p_value": 0.0
+    },
+    {
+      "layer": 20,
+      "column": 4299,
+      "drop_calib": 0.11249999701976776,
+      "drop_val": 0.1742134392261505,
+      "z_score": 66.53659918009838,
+      "p_value": 0.0
+    },
+    {
+      "layer": 14,
+      "column": 8,
+      "drop_calib": 0.13007812201976776,
+      "drop_val": 0.14392006397247314,
+      "z_score": 33.199565380217706,
+      "p_value": 0.0
+    },
+    {
+      "layer": 19,
+      "column": 7232,
+      "drop_calib": 0.13398437201976776,
+      "drop_val": 0.13701105117797852,
+      "z_score": 48.19815973612888,
+      "p_value": 0.0
+    },
+    {
+      "layer": 12,
+      "column": 13860,
+      "drop_calib": 0.0966796875,
+      "drop_val": 0.06196853891015053,
+      "z_score": 12.573521094346985,
+      "p_value": 0.0
+    },
+    {
+      "layer": 11,
+      "column": 11902,
+      "drop_calib": 0.07871093600988388,
+      "drop_val": 0.05389030650258064,
+      "z_score": 12.763860287120263,
+      "p_value": 0.0
+    },
+    {
+      "layer": 14,
+      "column": 7120,
+      "drop_calib": 0.03398437425494194,
+      "drop_val": 0.05165816470980644,
+      "z_score": 11.454520229031917,
+      "p_value": 0.0
+    },
+    {
+      "layer": 12,
+      "column": 7652,
+      "drop_calib": 0.06132812425494194,
+      "drop_val": 0.05038265138864517,
+      "z_score": 10.012339771273565,
+      "p_value": 0.0
+    },
+    {
+      "layer": 21,
+      "column": 12445,
+      "drop_calib": 0.04628906399011612,
+      "drop_val": 0.04719387739896774,
+      "z_score": 13.914908037242947,
+      "p_value": 0.0
+    },
+    {
+      "layer": 23,
+      "column": 860,
+      "drop_calib": 0.04296875,
+      "drop_val": 0.04655612260103226,
+      "z_score": 11.630390670404905,
+      "p_value": 0.0
+    },
+    {
+      "layer": 18,
+      "column": 2694,
+      "drop_calib": 0.02910156175494194,
+      "drop_val": 0.04496173560619354,
+      "z_score": 11.481673821237191,
+      "p_value": 0.0
+    },
+    {
+      "layer": 13,
+      "column": 2590,
+      "drop_calib": 0.06582031399011612,
+      "drop_val": 0.04485544189810753,
+      "z_score": 10.424231974029873,
+      "p_value": 0.0
+    },
+    {
+      "layer": 18,
+      "column": 7417,
+      "drop_calib": 0.03945312649011612,
+      "drop_val": 0.038584183901548386,
+      "z_score": 9.68233021738094,
+      "p_value": 0.0
+    },
+    {
+      "layer": 13,
+      "column": 4208,
+      "drop_calib": 0.04941406100988388,
+      "drop_val": 0.03252550959587097,
+      "z_score": 7.176546597355543,
+      "p_value": 3.574918139293004e-13
+    },
+    {
+      "layer": 19,
+      "column": 10694,
+      "drop_calib": 0.03730468824505806,
+      "drop_val": 0.031887754797935486,
+      "z_score": 9.935788245399271,
+      "p_value": 0.0
+    },
+    {
+      "layer": 20,
+      "column": 1104,
+      "drop_calib": 0.0283203125,
+      "drop_val": 0.03178146108984947,
+      "z_score": 10.589692852479562,
+      "p_value": 0.0
+    },
+    {
+      "layer": 13,
+      "column": 4216,
+      "drop_calib": 0.025390625,
+      "drop_val": 0.030931122601032257,
+      "z_score": 6.756587492879506,
+      "p_value": 7.0640160387824835e-12
+    },
+    {
+      "layer": 12,
+      "column": 9954,
+      "drop_calib": 0.01132812537252903,
+      "drop_val": 0.02625425159931183,
+      "z_score": 4.678505243587775,
+      "p_value": 1.4448689098500722e-06
+    },
+    {
+      "layer": 21,
+      "column": 9427,
+      "drop_calib": 0.03593749925494194,
+      "drop_val": 0.02582908235490322,
+      "z_score": 6.633390224866666,
+      "p_value": 1.6403101099626838e-11
+    },
+    {
+      "layer": 23,
+      "column": 13635,
+      "drop_calib": 0.01914062537252903,
+      "drop_val": 0.02434098720550537,
+      "z_score": 5.599199199075803,
+      "p_value": 1.0767211899853635e-08
+    },
+    {
+      "layer": 15,
+      "column": 8206,
+      "drop_calib": 0.01914062537252903,
+      "drop_val": 0.02380952425301075,
+      "z_score": 4.1501250576769,
+      "p_value": 1.6614683655991058e-05
+    },
+    {
+      "layer": 14,
+      "column": 318,
+      "drop_calib": 0.0380859375,
+      "drop_val": 0.022959183901548386,
+      "z_score": 4.690507798592945,
+      "p_value": 1.3626392048049496e-06
+    },
+    {
+      "layer": 18,
+      "column": 8527,
+      "drop_calib": 0.01972656324505806,
+      "drop_val": 0.022427720949053764,
+      "z_score": 5.123993472993984,
+      "p_value": 1.495656708483395e-07
+    },
+    {
+      "layer": 14,
+      "column": 13047,
+      "drop_calib": 0.01621093787252903,
+      "drop_val": 0.021364795044064522,
+      "z_score": 4.314729086344354,
+      "p_value": 7.989937392149926e-06
+    },
+    {
+      "layer": 23,
+      "column": 13240,
+      "drop_calib": 0.02500000037252903,
+      "drop_val": 0.02104591764509678,
+      "z_score": 4.704620117006648,
+      "p_value": 1.271695441396048e-06
+    },
+    {
+      "layer": 19,
+      "column": 8771,
+      "drop_calib": 0.008593750186264515,
+      "drop_val": 0.02083333395421505,
+      "z_score": 5.912242832514047,
+      "p_value": 1.6874025510205115e-09
+    },
+    {
+      "layer": 17,
+      "column": 529,
+      "drop_calib": 0.0205078125,
+      "drop_val": 0.02008928544819355,
+      "z_score": 4.229415358066406,
+      "p_value": 1.1714970472254116e-05
+    },
+    {
+      "layer": 18,
+      "column": 11143,
+      "drop_calib": 0.01953125,
+      "drop_val": 0.019451530650258064,
+      "z_score": 4.284299931333387,
+      "p_value": 9.165774028208062e-06
+    },
+    {
+      "layer": 23,
+      "column": 13591,
+      "drop_calib": 0.010937499813735485,
+      "drop_val": 0.01913265325129032,
+      "z_score": 4.185187590988975,
+      "p_value": 1.424653480541771e-05
+    },
+    {
+      "layer": 20,
+      "column": 13028,
+      "drop_calib": 0.011914062313735485,
+      "drop_val": 0.01615646295249462,
+      "z_score": 4.452234687549294,
+      "p_value": 4.249060487460099e-06
+    }
+  ]
+}
