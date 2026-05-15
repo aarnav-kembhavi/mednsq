@@ -76,6 +76,25 @@ class Config:
 
 CFG = Config()
 
+
+def resolve_local_model_path(configured: str) -> str:
+    """Absolute path to a local snapshot; fails fast if missing (avoids HFValidationError)."""
+    path = os.path.abspath(os.path.expanduser(os.environ.get("MEDNSQ_MODEL_PATH", configured)))
+    if not os.path.isdir(path):
+        raise FileNotFoundError(
+            f"Local model directory not found: {path}\n"
+            f"Download ContactDoctor/Bio-Medical-Llama-3-8B into {configured!r}, or set MEDNSQ_MODEL_PATH.\n"
+            f"Example:\n"
+            f"  huggingface-cli download ContactDoctor/Bio-Medical-Llama-3-8B "
+            f"--local-dir {configured}"
+        )
+    if not os.path.isfile(os.path.join(path, "config.json")):
+        raise FileNotFoundError(
+            f"Directory exists but is not a complete HF checkpoint (no config.json): {path}"
+        )
+    return path
+
+
 os.environ["HF_HUB_DISABLE_XET"] = "1"
 os.environ["HF_TRANSFER"] = "0"
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
@@ -395,9 +414,10 @@ def main():
     setup_seeds(CFG.seed)
     log(f"Config: {asdict(CFG)}")
 
-    log("Loading tokenizer + model (Bio-Medical-Llama-3-8B local snapshot, bf16, device_map=auto, trust_remote_code=True)...")
+    model_path = resolve_local_model_path(CFG.model_name)
+    log(f"Loading tokenizer + model from {model_path} (bf16, device_map=auto, local_files_only=True)...")
     tokenizer = AutoTokenizer.from_pretrained(
-        CFG.model_name,
+        model_path,
         trust_remote_code=True,
         use_fast=True,
         local_files_only=True,
@@ -407,7 +427,7 @@ def main():
     pad_id = tokenizer.pad_token_id
 
     model = AutoModelForCausalLM.from_pretrained(
-        CFG.model_name,
+        model_path,
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,

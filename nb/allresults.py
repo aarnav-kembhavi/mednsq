@@ -73,6 +73,24 @@ class Config:
 CONFIG = Config()
 
 
+def resolve_local_model_path(configured: str) -> str:
+    """Absolute path to a local snapshot; fails fast if missing (avoids HFValidationError)."""
+    path = os.path.abspath(os.path.expanduser(os.environ.get("MEDNSQ_MODEL_PATH", configured)))
+    if not os.path.isdir(path):
+        raise FileNotFoundError(
+            f"Local model directory not found: {path}\n"
+            f"Download ContactDoctor/Bio-Medical-Llama-3-8B into {configured!r}, or set MEDNSQ_MODEL_PATH.\n"
+            f"Example:\n"
+            f"  huggingface-cli download ContactDoctor/Bio-Medical-Llama-3-8B "
+            f"--local-dir {configured}"
+        )
+    if not os.path.isfile(os.path.join(path, "config.json")):
+        raise FileNotFoundError(
+            f"Directory exists but is not a complete HF checkpoint (no config.json): {path}"
+        )
+    return path
+
+
 # ============================================================================
 # TOKEN UTILITIES
 # ============================================================================
@@ -444,9 +462,9 @@ def main():
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(CONFIG.random_seed)
 
-    model_path = CONFIG.model_path
+    model_path = resolve_local_model_path(CONFIG.model_path)
 
-    print("Loading model...")
+    print(f"Loading model from {model_path}...")
     tokenizer = AutoTokenizer.from_pretrained(
         model_path,
         trust_remote_code=True,
