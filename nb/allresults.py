@@ -35,6 +35,7 @@ from mednsq_probe import MedNSQProbe
 class Config:
     """Immutable configuration for reproducibility."""
     model_key: str = "bio_medical_llama_8b"
+    # Same local snapshot as nb/search.py CFG.model_name
     model_path: str = "/workspace/biomedical_llama3"
     anchor_file: str = "anchors_bio_medical_llama_8b.json"
 
@@ -71,6 +72,25 @@ class Config:
 
 
 CONFIG = Config()
+
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(_SCRIPT_DIR)
+
+
+def resolve_anchor_json_path(configured: str) -> str:
+    """Resolve anchors_bio_medical_llama_8b.json (cwd, nb/, or repo root)."""
+    candidates = [
+        configured,
+        os.path.join(_SCRIPT_DIR, configured),
+        os.path.join(_REPO_ROOT, configured),
+        os.path.abspath(configured),
+    ]
+    path = next((p for p in candidates if os.path.isfile(p)), None)
+    if path is None:
+        raise FileNotFoundError(
+            "Anchor file not found. Tried:\n  " + "\n  ".join(candidates)
+        )
+    return path
 
 
 def resolve_local_model_path(configured: str) -> str:
@@ -505,12 +525,9 @@ def main():
     }
 
     print("Loading anchors...")
-    if not os.path.isfile(CONFIG.anchor_file):
-        raise FileNotFoundError(
-            f"Anchor file not found: {CONFIG.anchor_file} "
-            "(expected keys: anchors[].layer, anchors[].column)"
-        )
-    anchors_input, anchor_neurons = load_anchors_from_json(CONFIG.anchor_file)
+    anchor_path = resolve_anchor_json_path(CONFIG.anchor_file)
+    print(f"  {anchor_path}")
+    anchors_input, anchor_neurons = load_anchors_from_json(anchor_path)
     if not anchor_neurons:
         raise RuntimeError("No anchors loaded from JSON.")
     anchors_used = [[layer, col] for layer, col in anchor_neurons]
