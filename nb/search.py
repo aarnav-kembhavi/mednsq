@@ -42,7 +42,7 @@ from mednsq_probe import MedNSQProbe
 # =====================================================================
 @dataclass
 class Config:
-    model_name: str = "/workspace/bio_medical_llama"
+    model_name: str = "/workspace/biomedical_llama3"
     # Bio-Medical-Llama-3-8B (~32-layer Llama-family). Layers 9–23; tune if layer count changes.
     middle_layers: Tuple[int, ...] = tuple(range(9, 24))
     seed: int = 42

@@ -35,7 +35,7 @@ from mednsq_probe import MedNSQProbe
 class Config:
     """Immutable configuration for reproducibility."""
     model_key: str = "bio_medical_llama_8b"
-    model_path: str = "/workspace/bio_medical_llama"
+    model_path: str = "/workspace/biomedical_llama3"
     anchor_file: str = "anchors_bio_medical_llama_8b.json"
 
     n_medqa: int = 400
